@@ -46,5 +46,10 @@
     "prisma": "^6.12.0",
     "standard-version": "^9.5.0",
     "typescript": "^4.4.4"
+  },
+  "config": {
+    "commitizen": {
+      "path": "./node_modules/cz-conventional-changelog"
+    }
   }
 }
