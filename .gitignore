@@ -56,3 +56,16 @@ profile-*
 profile*
 *clinic*
 *flamegraph*
+
+/generated/prisma
+
+# Prisma SQLite database
+*.db
+*.db-journal
+
+# Environment variables
+.env
+
+# Dist or compiled files
+dist/
+build/

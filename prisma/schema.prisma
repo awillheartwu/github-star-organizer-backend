@@ -1,0 +1,69 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Project {
+  id             String    @id @default(uuid()) // 主键，UUID
+  githubId       Int       @unique              // GitHub 项目的唯一 ID（来自 GitHub API）
+  name           String                         // 仓库名称（如 star-organizer）
+  fullName       String                         // 仓库全名（如 user/star-organizer）
+  url            String                         // 仓库链接
+  description    String?                        // 项目描述
+  language       String?                        // 主语言
+  stars          Int       @default(0)          // Star 数量
+  forks          Int       @default(0)          // Fork 数量
+  lastCommit     DateTime?                      // 最后一次提交时间（可选）
+  lastSyncAt     DateTime  @default(now())      // 最后同步时间
+
+  // Custom info
+  notes          String?                        // 用户备注
+  favorite       Boolean   @default(false)      // 是否标记为收藏
+  archived       Boolean   @default(false)      // 是否归档
+  pinned         Boolean   @default(false)      // 是否置顶
+  score          Int?                           // 用户评分（可选）
+  videoLinks     VideoLink[]                    // 关联的视频链接（多对一）
+
+  // Relations
+  tags           ProjectTag[]                   // 项目关联的标签（多对多）
+
+  createdAt      DateTime  @default(now())      // 创建时间
+  updatedAt      DateTime  @updatedAt           // 更新时间（自动更新）
+}
+
+model Tag {
+  id          String        @id @default(uuid()) // 主键，UUID
+  name        String        @unique              // 标签名称（唯一）
+  description String?                             // 标签描述（可选）
+  projects    ProjectTag[]                        // 拥有该标签的项目（多对多）
+}
+
+model ProjectTag {
+  project   Project @relation(fields: [projectId], references: [id]) // 外键关联 Project
+  projectId String
+
+  tag       Tag     @relation(fields: [tagId], references: [id])     // 外键关联 Tag
+  tagId     String
+
+  @@id([projectId, tagId]) // 联合主键，确保 project 与 tag 的唯一组合
+}
+
+model VideoLink {
+  id        String   @id @default(uuid())      // 主键
+  url       String                              // 视频链接
+  project   Project  @relation(fields: [projectId], references: [id]) // 所属项目
+  projectId String                              // 外键
+
+  createdAt DateTime @default(now())           // 创建时间
+}
