@@ -1,15 +1,17 @@
 {
   "name": "github-star-organizer-backend",
   "version": "1.0.1",
+  "type": "commonjs",
   "description": "This project was bootstrapped with Fastify-CLI.",
-  "main": "app.js",
+  "main": "app.ts",
   "directories": {
     "test": "test"
   },
   "scripts": {
     "test": "node --test test/**/*.test.js",
-    "start": "fastify start -l info app.js",
-    "dev": "fastify start -w -l info -P app.js",
+    "dev": "ts-node src/main.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
     "pg": "prisma generate",
@@ -25,9 +27,12 @@
     "@fastify/sensible": "^6.0.0",
     "@fastify/swagger": "^9.5.1",
     "@fastify/swagger-ui": "^5.2.3",
+    "@joggr/fastify-prisma": "^6.0.0",
     "@prisma/client": "^6.12.0",
-    "fastify": "^5.0.0",
-    "fastify-plugin": "^5.0.0"
+    "close-with-grace": "^2.2.0",
+    "dotenv": "^17.2.0",
+    "fastify": "^5.4.0",
+    "fastify-plugin": "^5.0.1"
   },
   "devDependencies": {
     "@fastify/autoload": "^6.3.1",
@@ -45,7 +50,8 @@
     "prettier-eslint": "^16.1.2",
     "prisma": "^6.12.0",
     "standard-version": "^9.5.0",
-    "typescript": "^4.4.4"
+    "ts-node": "^10.9.2",
+    "typescript": "^4.9.5"
   },
   "config": {
     "commitizen": {
