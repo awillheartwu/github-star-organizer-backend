@@ -1,21 +1,25 @@
 {
     "compilerOptions": {
-        "target": "ES2021",
-        "module": "commonjs",
         "lib": [
-            "ES2021"
+            "esnext"
         ],
-        "strict": true,
+        "module": "esnext",
+        "target": "esnext",
         "esModuleInterop": true,
+        "allowSyntheticDefaultImports": true,
+        "incremental": true,
+        "noImplicitAny": false,
         "moduleResolution": "node",
-        "forceConsistentCasingInFileNames": true,
-        "skipLibCheck": true,
-        "allowJs": true,
-        "resolveJsonModule": true,
-        "outDir": "dist",
-        "rootDir": ".",
+        "sourceMap": true,
+        "outDir": "./dist",
+        "baseUrl": "./",
+        "paths": {
+            "config/*": [
+                "config/*"
+            ]
+        },
         "types": [
-            "node"
+            "node",
         ]
     },
     "include": [
@@ -24,6 +28,7 @@
     ],
     "exclude": [
         "node_modules",
-        "dist"
+        "dist",
+        "coverage"
     ]
 }

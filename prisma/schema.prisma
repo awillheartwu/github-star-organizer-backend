@@ -8,6 +8,14 @@ generator client {
   provider = "prisma-client-js"
 }
 
+generator prismabox {
+  provider     = "prismabox"
+  output       = "../src/generated/prismabox"
+  typebox      = true
+  useJsonTypes = true
+  inputModels  = true
+}
+
 datasource db {
   provider = "sqlite"
   url      = "file:./dev.db"

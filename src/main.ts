@@ -1,15 +1,28 @@
 import * as dotenv from 'dotenv'
 import Fastify from 'fastify'
 import closeWithGrace from 'close-with-grace'
+import formbody from '@fastify/formbody'
+import cors from '@fastify/cors'
+import helmet from '@fastify/helmet'
+import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox'
+import { handleServerError } from './helpers/error.helper'
 
 import fastifySwagger from '@fastify/swagger'
 import fastifySwaggerUI from '@fastify/swagger-ui'
 
 dotenv.config()
-
 async function bootstrap() {
   const app = Fastify({
-    logger: true,
+    logger: { level: process.env.LOG_LEVEL || 'info' },
+  }).withTypeProvider<TypeBoxTypeProvider>()
+
+  app.register(formbody)
+  app.register(cors)
+  app.register(helmet)
+
+  // 错误处理
+  app.setErrorHandler((error, request, reply) => {
+    handleServerError(reply, error)
   })
 
   // 注册 Swagger
@@ -29,6 +42,9 @@ async function bootstrap() {
 
   // 注册主业务插件
   await app.register(import('./app'))
+
+  await app.ready()
+  app.swagger()
 
   // 优雅关闭
   closeWithGrace(
