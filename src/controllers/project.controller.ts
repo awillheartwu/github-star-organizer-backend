@@ -51,15 +51,17 @@ export async function createProject(
 }
 
 export async function updateProject(
-  req: FastifyRequest<{ Params: { id: string }; Body: { name?: string; description?: string } }>,
+  req: FastifyRequest<{ Params: { id: string }; Body: Partial<CreateProjectBody> }>,
   reply: FastifyReply
 ) {
-  reply.send({ message: `update project id: ${req.params.id}`, body: req.body })
+  const data = await projectService.updateProjectService(req.params.id, req.body)
+  reply.send({ message: `update project id: ${req.params.id}`, data })
 }
 
 export async function deleteProject(
   req: FastifyRequest<{ Params: { id: string } }>,
   reply: FastifyReply
 ) {
-  reply.send({ message: `delete project id: ${req.params.id}` })
+  await projectService.deleteProjectService(req.params.id)
+  reply.code(204).send()
 }

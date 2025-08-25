@@ -20,4 +20,18 @@ export const ERROR_TYPES = {
   APP: 'AppError',
   INTERNAL: 'Internal',
   NOT_FOUND: 'NotFound',
+  PRISMA_UNIQUE: 'PrismaUniqueError',
 } as const
+
+// Prisma 错误码映射
+export const PRISMA_ERROR_CODES: Record<
+  string,
+  { message: string; statusCode: number; errorType: string }
+> = {
+  P2002: {
+    message: '唯一约束冲突，相关字段已存在',
+    statusCode: 409,
+    errorType: ERROR_TYPES.PRISMA_UNIQUE,
+  },
+  // 可继续扩展其他 Prisma 错误码
+}

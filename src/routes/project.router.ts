@@ -48,6 +48,31 @@ export default async function projectRoutes(fastify: FastifyInstance) {
     },
     projectController.createProject
   )
-  fastify.put('/projects/:id', projectController.updateProject)
-  fastify.delete('/projects/:id', projectController.deleteProject)
+  fastify.put(
+    '/projects/:id',
+    {
+      schema: {
+        description: '更新项目',
+        tags: ['Project'],
+        params: Type.Object({ id: Type.String() }),
+        body: Type.Partial(CreateProjectBodySchema),
+        response: { 200: BaseProjectResponseSchema },
+        summary: 'Update project',
+      },
+    },
+    projectController.updateProject
+  )
+  fastify.delete(
+    '/projects/:id',
+    {
+      schema: {
+        description: '删除项目',
+        tags: ['Project'],
+        params: Type.Object({ id: Type.String() }),
+        response: { 204: Type.Null() },
+        summary: 'Delete project',
+      },
+    },
+    projectController.deleteProject
+  )
 }
