@@ -15,7 +15,7 @@ export async function getProjects(
   reply: FastifyReply
 ) {
   const { page, pageSize, offset, limit } = getPagination(req.query)
-  const { data, total } = await projectService.getProjectsService({ offset, limit })
+  const { data, total } = await projectService.getProjectsService({ ...req.query, offset, limit })
   reply.send({
     message: 'get all projects',
     data,

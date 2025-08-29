@@ -11,6 +11,7 @@ export const HTTP_STATUS = {
   FORBIDDEN: { message: 'Forbidden', statusCode: 403 },
   NOT_FOUND: { message: 'Not Found', statusCode: 404 },
   INTERNAL: { message: 'Internal Server Error', statusCode: 500 },
+  CONFLICT: { message: 'Conflict', statusCode: 409 },
 } as const
 
 // 错误类型
@@ -21,6 +22,7 @@ export const ERROR_TYPES = {
   INTERNAL: 'Internal',
   NOT_FOUND: 'NotFound',
   PRISMA_UNIQUE: 'PrismaUniqueError',
+  CONFLICT: 'ConflictError',
 } as const
 
 // Prisma 错误码映射

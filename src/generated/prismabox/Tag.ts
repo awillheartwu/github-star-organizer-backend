@@ -9,6 +9,10 @@ export const TagPlain = Type.Object(
     id: Type.String(),
     name: Type.String(),
     description: __nullable__(Type.String()),
+    archived: Type.Boolean(),
+    createdAt: Type.String({ format: "date-time" }),
+    updatedAt: Type.String({ format: "date-time" }),
+    deletedAt: __nullable__(Type.String({ format: "date-time" })),
   },
   { additionalProperties: false },
 );
@@ -43,6 +47,10 @@ export const TagWhere = Type.Partial(
           id: Type.String(),
           name: Type.String(),
           description: Type.String(),
+          archived: Type.Boolean(),
+          createdAt: Type.String({ format: "date-time" }),
+          updatedAt: Type.String({ format: "date-time" }),
+          deletedAt: Type.String({ format: "date-time" }),
         },
         { additionalProperties: false },
       ),
@@ -55,19 +63,12 @@ export const TagWhereUnique = Type.Recursive(
     Type.Intersect(
       [
         Type.Partial(
-          Type.Object(
-            { id: Type.String(), name: Type.String() },
-            { additionalProperties: false },
-          ),
+          Type.Object({ id: Type.String() }, { additionalProperties: false }),
           { additionalProperties: false },
         ),
-        Type.Union(
-          [
-            Type.Object({ id: Type.String() }),
-            Type.Object({ name: Type.String() }),
-          ],
-          { additionalProperties: false },
-        ),
+        Type.Union([Type.Object({ id: Type.String() })], {
+          additionalProperties: false,
+        }),
         Type.Partial(
           Type.Object({
             AND: Type.Union([
@@ -88,6 +89,10 @@ export const TagWhereUnique = Type.Recursive(
               id: Type.String(),
               name: Type.String(),
               description: Type.String(),
+              archived: Type.Boolean(),
+              createdAt: Type.String({ format: "date-time" }),
+              updatedAt: Type.String({ format: "date-time" }),
+              deletedAt: Type.String({ format: "date-time" }),
             },
             { additionalProperties: false },
           ),
@@ -105,6 +110,10 @@ export const TagSelect = Type.Partial(
       name: Type.Boolean(),
       description: Type.Boolean(),
       projects: Type.Boolean(),
+      archived: Type.Boolean(),
+      createdAt: Type.Boolean(),
+      updatedAt: Type.Boolean(),
+      deletedAt: Type.Boolean(),
       _count: Type.Boolean(),
     },
     { additionalProperties: false },
@@ -128,6 +137,18 @@ export const TagOrderBy = Type.Partial(
         additionalProperties: false,
       }),
       description: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
+        additionalProperties: false,
+      }),
+      archived: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
+        additionalProperties: false,
+      }),
+      createdAt: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
+        additionalProperties: false,
+      }),
+      updatedAt: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
+        additionalProperties: false,
+      }),
+      deletedAt: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
         additionalProperties: false,
       }),
     },

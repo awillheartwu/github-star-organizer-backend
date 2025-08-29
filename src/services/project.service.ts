@@ -1,19 +1,33 @@
 // src/services/project.service.ts
 import { prisma } from '../plugins/prisma'
 import { Static } from '@sinclair/typebox'
-import { CreateProjectBodySchema } from '../schemas/project.schema'
+import { ProjectQuerySchema, CreateProjectBodySchema } from '../schemas/project.schema'
 import { AppError } from '../helpers/error.helper'
 import { HTTP_STATUS, ERROR_TYPES } from '../constants/errorCodes'
+import type { ProjectWithRelations } from '../helpers/transform.helper'
+import { toProjectDto, toProjectDtos } from '../helpers/transform.helper'
+import { Project } from '@prisma/client'
 // import { Project } from '../generated/prismabox/Project'
 // import { mockFromTypeboxSchema } from '../utils/mockTypebox'
 
+type ProjectQuery = Static<typeof ProjectQuerySchema> & { offset: number; limit: number }
 type CreateProjectBody = Static<typeof CreateProjectBodySchema>
 
-const IMMUTABLE = new Set(['id', 'createdAt', 'updatedAt', 'lastSyncAt'])
+const IMMUTABLE = new Set(['id', 'githubId', 'createdAt', 'updatedAt', 'lastSyncAt'])
+
+// 组装排序条件
+const ORDERABLE = new Set<keyof Project>([
+  'createdAt',
+  'updatedAt',
+  'stars',
+  'forks',
+  'lastCommit',
+  'lastSyncAt',
+  'name',
+])
 
 // 标量字段清单（只对这些做差异比对）
 const SCALAR_KEYS: Array<keyof CreateProjectBody> = [
-  'githubId',
   'name',
   'fullName',
   'url',
@@ -33,31 +47,167 @@ const SCALAR_KEYS: Array<keyof CreateProjectBody> = [
 const uniq = <T>(arr: T[]) =>
   Array.from(new Set(arr)).filter((v) => v !== undefined && v !== null && v !== '')
 
-export async function getProjectsService({ offset, limit }: { offset: number; limit: number }) {
+export async function getProjectsService(query: ProjectQuery) {
+  const {
+    name,
+    keyword,
+    language,
+    languages,
+    favorite,
+    pinned,
+    archived, // 布尔开关，可选
+    starsMin,
+    starsMax,
+    forksMin,
+    forksMax,
+    tagNames, // string[] 按标签筛选
+    createdAtStart,
+    createdAtEnd,
+    updatedAtStart,
+    updatedAtEnd,
+    orderBy,
+    orderDirection,
+    offset,
+    limit,
+  } = query
+
+  const conditions: Record<string, unknown> = {}
+  // 归档开关
+  conditions.archived = archived ?? false
+
+  // 是否喜欢和是否置顶
+  if (favorite !== undefined) conditions.favorite = !!favorite
+  if (pinned !== undefined) conditions.pinned = !!pinned
+
+  // 语言
+  if (language) conditions.language = { equals: language, mode: 'insensitive' }
+  if (languages?.length) conditions.language = { in: languages, mode: 'insensitive' }
+
+  // 名称模糊搜索
+  if (name) conditions.name = { contains: name, mode: 'insensitive' }
+
+  // 关键词搜索
+  if (keyword) {
+    // 统一关键词：name / fullName / description
+    conditions.OR = [
+      { name: { contains: keyword, mode: 'insensitive' } },
+      { fullName: { contains: keyword, mode: 'insensitive' } },
+      { description: { contains: keyword, mode: 'insensitive' } },
+    ]
+  }
+
+  // 星标/分叉 数量区间
+  if (starsMin !== undefined || starsMax !== undefined) {
+    conditions.stars = {}
+    if (starsMin !== undefined) conditions.stars['gte'] = Number(starsMin)
+    if (starsMax !== undefined) conditions.stars['lte'] = Number(starsMax)
+  }
+  if (forksMin !== undefined || forksMax !== undefined) {
+    conditions.forks = {}
+    if (forksMin !== undefined) conditions.forks['gte'] = Number(forksMin)
+    if (forksMax !== undefined) conditions.forks['lte'] = Number(forksMax)
+  }
+
+  // 创建/更新时间范围
+  if (createdAtStart || createdAtEnd) {
+    conditions['createdAt'] = {}
+    if (createdAtStart) conditions['createdAt']['gte'] = new Date(createdAtStart)
+    if (createdAtEnd) conditions['createdAt']['lte'] = new Date(createdAtEnd)
+  }
+  if (updatedAtStart || updatedAtEnd) {
+    conditions['updatedAt'] = {}
+    if (updatedAtStart) conditions['updatedAt']['gte'] = new Date(updatedAtStart)
+    if (updatedAtEnd) conditions['updatedAt']['lte'] = new Date(updatedAtEnd)
+  }
+
+  // 按标签筛选（多对多）
+  if (tagNames?.length) {
+    conditions.tags = {
+      some: {
+        tag: { name: { in: tagNames }, archived: false },
+      },
+    }
+  }
+
+  const order: Record<string, 'asc' | 'desc'> = {}
+  if (orderBy && ORDERABLE.has(orderBy)) {
+    order[orderBy] = orderDirection || 'asc'
+  } else {
+    order['createdAt'] = 'desc' // 默认
+  }
+
+  console.log('conditions', JSON.stringify(conditions, null, 2))
+  console.log('order', order, { offset, limit })
+
+  // 同时执行查询和计数
   const [data, total] = await Promise.all([
     prisma.project.findMany({
       skip: offset,
       take: limit,
-      // orderBy: { createdAt: 'desc' }, // 按需排序
+      where: conditions,
+      orderBy: order,
+      include: {
+        tags: {
+          where: { tag: { archived: false } },
+          include: { tag: { select: { id: true, name: true, description: true } } },
+        },
+        videoLinks: { where: { archived: false }, select: { id: true, url: true } },
+      },
     }),
-    prisma.project.count(),
+    prisma.project.count({ where: conditions }),
   ])
 
+  // 脱壳
+  const flatData = toProjectDtos(data as unknown as ProjectWithRelations[])
+
+  // 返回结果
+  const result = { data: flatData, total }
+
+  // 仅用于生成 Mock 数据
   /* const mockResponse = mockFromTypeboxSchema(Project)
   console.log(JSON.stringify(mockResponse, null, 2)) */
-  return { data, total }
+  return result
 }
 
 export async function getProjectByIdService(id: string) {
-  // 可以加 include/tag 等更多字段
-  const project = await prisma.project.findUnique({ where: { id } })
-  return project
+  const project = await prisma.project.findUnique({
+    where: { id },
+    include: {
+      tags: {
+        where: { tag: { archived: false } },
+        include: { tag: { select: { id: true, name: true, description: true } } },
+      },
+      videoLinks: { where: { archived: false }, select: { id: true, url: true } },
+    },
+  })
+  if (!project) return null
+  // 脱壳
+  return toProjectDto(project as unknown as ProjectWithRelations)
 }
 
 export async function createProjectService(body: CreateProjectBody) {
   return await prisma.$transaction(async (tx) => {
     const { tags = [], videoLinks = [], ...projectData } = body
-
+    // 0.根剧 githubId 保护幂等
+    if (!projectData.githubId) {
+      throw new AppError(
+        `githubId is required`,
+        HTTP_STATUS.BAD_REQUEST.statusCode,
+        ERROR_TYPES.VALIDATION,
+        {}
+      )
+    }
+    const existing = await tx.project.findUnique({
+      where: { githubId: projectData.githubId },
+    })
+    if (existing) {
+      throw new AppError(
+        `Project with githubId ${projectData.githubId} already exists`,
+        HTTP_STATUS.CONFLICT.statusCode,
+        ERROR_TYPES.CONFLICT,
+        { githubId: projectData.githubId }
+      )
+    }
     // 1. 先新建 Project
     const project = await tx.project.create({
       data: {
@@ -68,11 +218,15 @@ export async function createProjectService(body: CreateProjectBody) {
     // 2. tags：查找并建立关联，不存在则新建
     // 假设所有 tag 的 name 唯一
     const tagNames = tags.map((t) => t.name)
-    const existedTags = await tx.tag.findMany({ where: { name: { in: tagNames } } })
+    const existedTags = await tx.tag.findMany({
+      where: { name: { in: tagNames }, archived: false },
+    })
     const existedTagNames = new Set(existedTags.map((t) => t.name))
 
-    // 需要新建的 tags
-    const toCreateTags = tags.filter((t) => !existedTagNames.has(t.name))
+    // 需要新建的 tags,并去掉 id
+    const toCreateTags = tags
+      .filter((t) => !existedTagNames.has(t.name))
+      .map((t) => ({ name: t.name, description: t.description || '' }))
     let newTags: typeof existedTags = []
     if (toCreateTags.length) {
       // createMany 不会返回 id，所以还得再查一遍
@@ -104,12 +258,15 @@ export async function createProjectService(body: CreateProjectBody) {
     const result = await tx.project.findUnique({
       where: { id: project.id },
       include: {
-        tags: { include: { tag: true } },
-        videoLinks: true,
+        tags: {
+          where: { tag: { archived: false } },
+          include: { tag: true },
+        },
+        videoLinks: { where: { archived: false }, select: { id: true, url: true } },
       },
     })
 
-    return result
+    return toProjectDto(result as unknown as ProjectWithRelations)
   })
 }
 
@@ -125,11 +282,17 @@ export async function updateProjectService(id: string, rawBody: Partial<CreatePr
     // 1) 取当前数据（含标签/视频）
     const current = await tx.project.findUnique({
       where: { id },
-      include: { tags: { include: { tag: true } }, videoLinks: true },
+      include: {
+        tags: {
+          where: { tag: { archived: false } },
+          include: { tag: true },
+        },
+        videoLinks: { where: { archived: false } },
+      },
     })
     if (!current) {
       throw new AppError(
-        `Project not found: ${id}`,
+        `Project not found or archived: ${id}`,
         HTTP_STATUS.NOT_FOUND.statusCode,
         ERROR_TYPES.NOT_FOUND,
         { id }
@@ -148,7 +311,7 @@ export async function updateProjectService(id: string, rawBody: Partial<CreatePr
       }
     }
     if (Object.keys(scalarUpdate).length) {
-      await tx.project.update({ where: { id }, data: scalarUpdate })
+      await tx.project.update({ where: { id, archived: false }, data: scalarUpdate })
     }
 
     // 3) tags 差异（按 name 幂等）
@@ -162,7 +325,9 @@ export async function updateProjectService(id: string, rawBody: Partial<CreatePr
       // upsert 每个要新增的 tag（幂等）
       if (toAddNames.length) {
         const addedTags = await Promise.all(
-          toAddNames.map((name) => tx.tag.upsert({ where: { name }, update: {}, create: { name } }))
+          toAddNames.map((name) =>
+            tx.tag.upsert({ where: { name, archived: false }, update: {}, create: { name } })
+          )
         )
         // 建立关联（去重后的结果，一次性 createMany）
         await tx.projectTag.createMany({
@@ -192,8 +357,9 @@ export async function updateProjectService(id: string, rawBody: Partial<CreatePr
         })
       }
       if (toRemove.length) {
-        await tx.videoLink.deleteMany({
+        await tx.videoLink.updateMany({
           where: { projectId: id, url: { in: toRemove } },
+          data: { archived: true, deletedAt: new Date() },
         })
       }
     }
@@ -201,9 +367,25 @@ export async function updateProjectService(id: string, rawBody: Partial<CreatePr
     // 5) 返回最新结果（统一结构）
     const result = await tx.project.findUnique({
       where: { id },
-      include: { tags: { include: { tag: true } }, videoLinks: true },
+      include: {
+        tags: {
+          where: { tag: { archived: false } },
+          include: { tag: true },
+        },
+        videoLinks: { where: { archived: false } },
+      },
     })
-    return result!
+
+    // 6) 脱壳
+    if (!result) {
+      throw new AppError(
+        `Project not found after update: ${id}`,
+        HTTP_STATUS.NOT_FOUND.statusCode,
+        ERROR_TYPES.NOT_FOUND,
+        { id }
+      )
+    }
+    return toProjectDto(result as unknown as ProjectWithRelations)
   })
 }
 
@@ -213,7 +395,7 @@ export async function deleteProjectService(id: string) {
     const existing = await tx.project.findUnique({ where: { id } })
     if (!existing) {
       throw new AppError(
-        `Project not found: ${id}`,
+        `Project not found or archived: ${id}`,
         HTTP_STATUS.NOT_FOUND.statusCode,
         ERROR_TYPES.NOT_FOUND,
         { id }
@@ -223,10 +405,16 @@ export async function deleteProjectService(id: string) {
     // 2) 删除关联数据（ProjectTag, VideoLink）
     await Promise.all([
       tx.projectTag.deleteMany({ where: { projectId: id } }),
-      tx.videoLink.deleteMany({ where: { projectId: id } }),
+      tx.videoLink.updateMany({
+        where: { projectId: id, archived: false },
+        data: { archived: true, deletedAt: new Date() },
+      }),
     ])
 
     // 3) 删除 Project
-    await tx.project.delete({ where: { id } })
+    await tx.project.update({
+      where: { id },
+      data: { archived: true, deletedAt: new Date() },
+    })
   })
 }

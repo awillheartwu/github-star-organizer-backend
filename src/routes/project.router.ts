@@ -28,9 +28,9 @@ export default async function projectRoutes(fastify: FastifyInstance) {
       schema: {
         description: '获取单个项目',
         tags: ['Project'],
-        params: Type.Object({ id: Type.String() }),
+        params: Type.Object({ id: Type.String({ format: 'uuid' }) }),
         response: { 200: BaseProjectResponseSchema },
-        summary: 'Get project by id',
+        summary: 'Get a project by id',
       },
     },
     projectController.getProjectById
@@ -43,7 +43,7 @@ export default async function projectRoutes(fastify: FastifyInstance) {
         tags: ['Project'],
         body: CreateProjectBodySchema,
         response: { 201: BaseProjectResponseSchema },
-        summary: 'Create project',
+        summary: 'Create a project',
       },
     },
     projectController.createProject
@@ -54,10 +54,10 @@ export default async function projectRoutes(fastify: FastifyInstance) {
       schema: {
         description: '更新项目',
         tags: ['Project'],
-        params: Type.Object({ id: Type.String() }),
+        params: Type.Object({ id: Type.String({ format: 'uuid' }) }),
         body: Type.Partial(CreateProjectBodySchema),
         response: { 200: BaseProjectResponseSchema },
-        summary: 'Update project',
+        summary: 'Update a project',
       },
     },
     projectController.updateProject
@@ -68,9 +68,9 @@ export default async function projectRoutes(fastify: FastifyInstance) {
       schema: {
         description: '删除项目',
         tags: ['Project'],
-        params: Type.Object({ id: Type.String() }),
+        params: Type.Object({ id: Type.String({ format: 'uuid' }) }),
         response: { 204: Type.Null() },
-        summary: 'Delete project',
+        summary: 'Delete a project',
       },
     },
     projectController.deleteProject

@@ -45,15 +45,35 @@ model Project {
   // Relations
   tags ProjectTag[] // 项目关联的标签（多对多）
 
-  createdAt DateTime @default(now()) // 创建时间
-  updatedAt DateTime @updatedAt // 更新时间（自动更新）
+  createdAt DateTime  @default(now()) // 创建时间
+  updatedAt DateTime  @default(now()) @updatedAt // 更新时间（自动更新）
+  deletedAt DateTime? // 软删除时间（可选）
+
+  // 🔽 索引区（新增）
+  @@index([archived, createdAt]) // 常用 where archived=false 排序 createdAt
+  @@index([archived, updatedAt]) // 最近更新
+  @@index([stars])
+  @@index([forks])
+  @@index([score])
+  @@index([language])
+  @@index([lastCommit])
+  @@index([lastSyncAt])
+  @@index([name]) // name 模糊匹配也有帮助（SQLite 里作用有限，但保留可读性）
 }
 
 model Tag {
   id          String       @id @default(uuid()) // 主键，UUID
-  name        String       @unique // 标签名称（唯一）
+  name        String // 标签名称（唯一） 修正,考虑软删,不再唯一
   description String? // 标签描述（可选）
   projects    ProjectTag[] // 拥有该标签的项目（多对多）
+
+  archived  Boolean   @default(false) // 是否归档
+  createdAt DateTime  @default(now()) // 创建时间
+  updatedAt DateTime  @default(now()) @updatedAt // 更新时间（自动更新）
+  deletedAt DateTime? // 软删除时间（可选）
+
+  @@index([archived, createdAt]) // 常用 where archived=false 排序 createdAt
+  @@index([name]) // name 模糊匹配也有帮助（SQLite 里作用有限，但保留可读性）
 }
 
 model ProjectTag {
@@ -64,6 +84,9 @@ model ProjectTag {
   tagId String
 
   @@id([projectId, tagId]) // 联合主键，确保 project 与 tag 的唯一组合
+  // 🔽 常用连接方向都建索引
+  @@index([projectId])
+  @@index([tagId])
 }
 
 model VideoLink {
@@ -72,5 +95,11 @@ model VideoLink {
   project   Project @relation(fields: [projectId], references: [id]) // 所属项目
   projectId String // 外键
 
-  createdAt DateTime @default(now()) // 创建时间
+  archived  Boolean   @default(false) // 是否归档
+  createdAt DateTime  @default(now()) // 创建时间
+  updatedAt DateTime  @default(now()) @updatedAt // 更新时间（自动更新）
+  deletedAt DateTime? // 软删除时间（可选）
+
+  @@index([projectId])
+  @@index([archived, createdAt]) // 常用 where archived=false 排序 createdAt
 }
