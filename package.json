@@ -6,9 +6,10 @@
   "main": "main.ts",
   "scripts": {
     "test": "jest --config test/jest.json --runInBand --passWithNoTests --forceExit",
-    "dev": "tsx watch ./src/main.ts | pino-pretty --colorize",
+    "dev": "dotenv -e .env.development -- tsx watch ./src/main.ts | pino-pretty --colorize",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/main.js",
+    "start:prod:local": "dotenv -e .env.production -- node dist/main.js",
     "postinstall": "prisma generate && node ./src/scripts/nullPatch.mjs",
     "update:packages": "npx npm-check-updates -u",
     "db:gen": "prisma generate && node ./src/scripts/nullPatch.mjs",

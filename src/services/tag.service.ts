@@ -34,7 +34,6 @@ export async function getTagsService(ctx: Ctx, query: TagQuery) {
   }
 
   ctx.log.debug({ conditions, order, offset, limit }, 'tag.list query built')
-  ctx.log.debug('order', order, { offset, limit })
 
   // 查询
   const [data, total] = await Promise.all([
@@ -47,7 +46,7 @@ export async function getTagsService(ctx: Ctx, query: TagQuery) {
     }),
     ctx.prisma.tag.count({ where: conditions }),
   ])
-  ctx.log.debug(`Found ${total} tags matching conditions`)
+  ctx.log.debug({ data, total }, 'tag.list query result')
   return { data, total }
 }
 
@@ -63,7 +62,7 @@ export async function getTagByIdService(ctx: Ctx, id: string) {
     },
   })
   if (!tag || tag.archived) return null
-  ctx.log.debug('Tag found:', tag)
+  ctx.log.debug({ tag }, 'tag found')
   return toTagDto(tag as TagWithRelations)
 }
 
@@ -81,7 +80,7 @@ export async function createTagService(ctx: Ctx, tagData: CreateTagBody) {
     )
   }
   const tag = await ctx.prisma.tag.create({ data: tagData })
-  ctx.log.debug('Tag created:', tag)
+  ctx.log.debug({ tag }, 'tag created')
   return tag
 }
 
@@ -109,7 +108,7 @@ export async function updateTagService(ctx: Ctx, id: string, tagData: Partial<Cr
     }
   }
   const tag = await ctx.prisma.tag.update({ where: { id }, data: tagData })
-  ctx.log.debug('Tag updated:', tag)
+  ctx.log.debug({ tag }, 'tag updated')
   return tag
 }
 
@@ -139,6 +138,6 @@ export async function deleteTagService(ctx: Ctx, id: string) {
 
     // 3. 删除 tag
     await tx.tag.update({ where: { id }, data: { archived: true, updatedAt: new Date() } })
-    ctx.log.debug('Tag archived:', id)
+    ctx.log.debug({ id }, 'tag archived')
   })
 }

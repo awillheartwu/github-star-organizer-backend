@@ -1,6 +1,7 @@
 // src/plugins/prisma.ts
 import { FastifyPluginAsync } from 'fastify'
 import { PrismaClient } from '@prisma/client'
+import fp from 'fastify-plugin'
 
 // 单例 Prisma 实例
 const prisma = new PrismaClient()
@@ -15,6 +16,6 @@ const prismaPlugin: FastifyPluginAsync = async (fastify) => {
   })
 }
 
-export default prismaPlugin
+export default fp(prismaPlugin)
 
 export { prisma }

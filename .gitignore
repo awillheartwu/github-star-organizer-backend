@@ -65,6 +65,8 @@ profile*
 
 # Environment variables
 .env
+.env.development
+.env.production
 
 # Dist or compiled files
 dist/

@@ -136,8 +136,7 @@ export async function getProjectsService(ctx: Ctx, query: ProjectQuery) {
     order['createdAt'] = 'desc' // 默认
   }
 
-  ctx.log.debug('conditions', JSON.stringify(conditions, null, 2))
-  ctx.log.debug('order', order, { offset, limit })
+  ctx.log.debug({ conditions, order, offset, limit }, 'project.list query built')
 
   // 同时执行查询和计数
   const [data, total] = await Promise.all([
@@ -181,7 +180,7 @@ export async function getProjectByIdService(ctx: Ctx, id: string) {
     },
   })
   if (!project) return null
-  ctx.log.debug('Project found:', project)
+  ctx.log.debug({ project }, 'project found')
   // 脱壳
   return toProjectDto(project as unknown as ProjectWithRelations)
 }
@@ -265,7 +264,7 @@ export async function createProjectService(ctx: Ctx, body: CreateProjectBody) {
         videoLinks: { where: { archived: false }, select: { id: true, url: true } },
       },
     })
-    ctx.log.debug('Project created:', result)
+    ctx.log.debug({ result }, 'project created')
 
     return toProjectDto(result as unknown as ProjectWithRelations)
   })
@@ -405,7 +404,7 @@ export async function updateProjectService(
         { id }
       )
     }
-    ctx.log.debug('Project updated:', result)
+    ctx.log.debug({ result }, 'project updated')
     return toProjectDto(result as unknown as ProjectWithRelations)
   })
 }
@@ -437,6 +436,6 @@ export async function deleteProjectService(ctx: Ctx, id: string) {
       where: { id },
       data: { archived: true, deletedAt: new Date() },
     })
-    ctx.log.debug('Project archived:', id)
+    ctx.log.debug({ id }, 'project archived')
   })
 }

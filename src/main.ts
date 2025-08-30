@@ -1,4 +1,3 @@
-import * as dotenv from 'dotenv'
 import Fastify from 'fastify'
 import closeWithGrace from 'close-with-grace'
 import formbody from '@fastify/formbody'
@@ -6,14 +5,14 @@ import cors from '@fastify/cors'
 import helmet from '@fastify/helmet'
 import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox'
 import { handleServerError } from './helpers/error.helper'
+import { config } from './config'
 
 import fastifySwagger from '@fastify/swagger'
 import fastifySwaggerUI from '@fastify/swagger-ui'
 
-dotenv.config()
 async function bootstrap() {
   const app = Fastify({
-    logger: { level: process.env.LOG_LEVEL || 'info' },
+    logger: { level: config.logLevel || 'info' },
   }).withTypeProvider<TypeBoxTypeProvider>()
 
   app.register(formbody)
