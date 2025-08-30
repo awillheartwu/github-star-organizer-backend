@@ -4,6 +4,7 @@ import { TagQuerySchema, CreateTagBodySchema } from '../schemas/tag.schema'
 import { getPagination } from '../helpers/pagination.helper'
 import { AppError } from '../helpers/error.helper'
 import { HTTP_STATUS, ERROR_TYPES } from '../constants/errorCodes'
+import { getCtx } from '../helpers/context.helper'
 
 import * as tagService from '../services/tag.service'
 
@@ -11,8 +12,9 @@ type TagQuery = Static<typeof TagQuerySchema>
 type CreateTagBody = Static<typeof CreateTagBodySchema>
 
 export async function getTags(req: FastifyRequest<{ Querystring: TagQuery }>, reply: FastifyReply) {
+  const ctx = getCtx(req)
   const { page, pageSize, offset, limit } = getPagination(req.query)
-  const { data, total } = await tagService.getTagsService({ ...req.query, offset, limit })
+  const { data, total } = await tagService.getTagsService(ctx, { ...req.query, offset, limit })
   reply.send({ message: 'get all tags', data, total, page, pageSize })
 }
 
@@ -21,8 +23,9 @@ export async function getTagById(
   reply: FastifyReply
 ) {
   // 获取单个 tag
+  const ctx = getCtx(req)
   const { id } = req.params
-  const tag = await tagService.getTagByIdService(id)
+  const tag = await tagService.getTagByIdService(ctx, id)
   if (!tag) {
     throw new AppError(
       `Tag not found: ${id}`,
@@ -36,7 +39,8 @@ export async function getTagById(
 
 export async function createTag(req: FastifyRequest<{ Body: CreateTagBody }>, reply: FastifyReply) {
   // 新建 tag
-  const data = await tagService.createTagService(req.body)
+  const ctx = getCtx(req)
+  const data = await tagService.createTagService(ctx, req.body)
   reply.code(201).send({ message: 'create tag success', data })
 }
 
@@ -45,7 +49,8 @@ export async function updateTag(
   reply: FastifyReply
 ) {
   // 修改 tag
-  const data = await tagService.updateTagService(req.params.id, req.body)
+  const ctx = getCtx(req)
+  const data = await tagService.updateTagService(ctx, req.params.id, req.body)
   reply.send({ message: `update tag id: ${req.params.id}`, data })
 }
 
@@ -54,6 +59,7 @@ export async function deleteTag(
   reply: FastifyReply
 ) {
   // 删除 tag
-  await tagService.deleteTagService(req.params.id)
+  const ctx = getCtx(req)
+  await tagService.deleteTagService(ctx, req.params.id)
   reply.code(204).send()
 }

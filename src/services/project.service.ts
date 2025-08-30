@@ -1,5 +1,4 @@
 // src/services/project.service.ts
-import { prisma } from '../plugins/prisma'
 import { Static } from '@sinclair/typebox'
 import { ProjectQuerySchema, CreateProjectBodySchema } from '../schemas/project.schema'
 import { AppError } from '../helpers/error.helper'
@@ -7,6 +6,7 @@ import { HTTP_STATUS, ERROR_TYPES } from '../constants/errorCodes'
 import type { ProjectWithRelations } from '../helpers/transform.helper'
 import { toProjectDto, toProjectDtos } from '../helpers/transform.helper'
 import { Project } from '@prisma/client'
+import { Ctx } from '../helpers/context.helper'
 // import { Project } from '../generated/prismabox/Project'
 // import { mockFromTypeboxSchema } from '../utils/mockTypebox'
 
@@ -47,7 +47,7 @@ const SCALAR_KEYS: Array<keyof CreateProjectBody> = [
 const uniq = <T>(arr: T[]) =>
   Array.from(new Set(arr)).filter((v) => v !== undefined && v !== null && v !== '')
 
-export async function getProjectsService(query: ProjectQuery) {
+export async function getProjectsService(ctx: Ctx, query: ProjectQuery) {
   const {
     name,
     keyword,
@@ -136,12 +136,12 @@ export async function getProjectsService(query: ProjectQuery) {
     order['createdAt'] = 'desc' // 默认
   }
 
-  console.log('conditions', JSON.stringify(conditions, null, 2))
-  console.log('order', order, { offset, limit })
+  ctx.log.debug('conditions', JSON.stringify(conditions, null, 2))
+  ctx.log.debug('order', order, { offset, limit })
 
   // 同时执行查询和计数
   const [data, total] = await Promise.all([
-    prisma.project.findMany({
+    ctx.prisma.project.findMany({
       skip: offset,
       take: limit,
       where: conditions,
@@ -154,7 +154,7 @@ export async function getProjectsService(query: ProjectQuery) {
         videoLinks: { where: { archived: false }, select: { id: true, url: true } },
       },
     }),
-    prisma.project.count({ where: conditions }),
+    ctx.prisma.project.count({ where: conditions }),
   ])
 
   // 脱壳
@@ -169,8 +169,8 @@ export async function getProjectsService(query: ProjectQuery) {
   return result
 }
 
-export async function getProjectByIdService(id: string) {
-  const project = await prisma.project.findUnique({
+export async function getProjectByIdService(ctx: Ctx, id: string) {
+  const project = await ctx.prisma.project.findUnique({
     where: { id },
     include: {
       tags: {
@@ -181,12 +181,13 @@ export async function getProjectByIdService(id: string) {
     },
   })
   if (!project) return null
+  ctx.log.debug('Project found:', project)
   // 脱壳
   return toProjectDto(project as unknown as ProjectWithRelations)
 }
 
-export async function createProjectService(body: CreateProjectBody) {
-  return await prisma.$transaction(async (tx) => {
+export async function createProjectService(ctx: Ctx, body: CreateProjectBody) {
+  return await ctx.prisma.$transaction(async (tx) => {
     const { tags = [], videoLinks = [], ...projectData } = body
     // 0.根剧 githubId 保护幂等
     if (!projectData.githubId) {
@@ -230,8 +231,7 @@ export async function createProjectService(body: CreateProjectBody) {
     let newTags: typeof existedTags = []
     if (toCreateTags.length) {
       // createMany 不会返回 id，所以还得再查一遍
-      await tx.tag.createMany({ data: toCreateTags })
-      newTags = await tx.tag.findMany({ where: { name: { in: toCreateTags.map((t) => t.name) } } })
+      newTags = await tx.tag.createManyAndReturn({ data: toCreateTags })
     }
 
     // 全部 tag id
@@ -265,14 +265,19 @@ export async function createProjectService(body: CreateProjectBody) {
         videoLinks: { where: { archived: false }, select: { id: true, url: true } },
       },
     })
+    ctx.log.debug('Project created:', result)
 
     return toProjectDto(result as unknown as ProjectWithRelations)
   })
 }
 
-export async function updateProjectService(id: string, rawBody: Partial<CreateProjectBody>) {
+export async function updateProjectService(
+  ctx: Ctx,
+  id: string,
+  rawBody: Partial<CreateProjectBody>
+) {
   type UpdateProjectBody = Partial<CreateProjectBody>
-  return prisma.$transaction(async (tx) => {
+  return ctx.prisma.$transaction(async (tx) => {
     // 0) 保护：忽略不可变字段
     const body: UpdateProjectBody = { ...rawBody }
     Object.keys(body).forEach((k) => {
@@ -311,7 +316,7 @@ export async function updateProjectService(id: string, rawBody: Partial<CreatePr
       }
     }
     if (Object.keys(scalarUpdate).length) {
-      await tx.project.update({ where: { id, archived: false }, data: scalarUpdate })
+      await tx.project.update({ where: { id }, data: scalarUpdate })
     }
 
     // 3) tags 差异（按 name 幂等）
@@ -324,15 +329,30 @@ export async function updateProjectService(id: string, rawBody: Partial<CreatePr
 
       // upsert 每个要新增的 tag（幂等）
       if (toAddNames.length) {
-        const addedTags = await Promise.all(
-          toAddNames.map((name) =>
-            tx.tag.upsert({ where: { name, archived: false }, update: {}, create: { name } })
-          )
-        )
-        // 建立关联（去重后的结果，一次性 createMany）
-        await tx.projectTag.createMany({
-          data: addedTags.map((t) => ({ projectId: id, tagId: t.id })),
+        // a) 一次查已有
+        const existed = await tx.tag.findMany({
+          where: { name: { in: toAddNames }, archived: false },
+          select: { id: true, name: true },
         })
+        const existedNames = new Set(existed.map((t) => t.name))
+
+        // b) 差集，一次 createManyAndReturn
+        const toCreate = toAddNames.filter((n) => !existedNames.has(n)).map((n) => ({ name: n }))
+
+        const created = toCreate.length
+          ? await tx.tag.createManyAndReturn({
+              data: toCreate,
+              select: { id: true, name: true },
+            })
+          : []
+
+        // c) 合并结果后，一次性建关联
+        const all = [...existed, ...created]
+        if (all.length) {
+          await tx.projectTag.createMany({
+            data: all.map((t) => ({ projectId: id, tagId: t.id })),
+          })
+        }
       }
 
       if (toRemoveNames.length) {
@@ -385,12 +405,13 @@ export async function updateProjectService(id: string, rawBody: Partial<CreatePr
         { id }
       )
     }
+    ctx.log.debug('Project updated:', result)
     return toProjectDto(result as unknown as ProjectWithRelations)
   })
 }
 
-export async function deleteProjectService(id: string) {
-  await prisma.$transaction(async (tx) => {
+export async function deleteProjectService(ctx: Ctx, id: string) {
+  await ctx.prisma.$transaction(async (tx) => {
     // 1) 确认存在
     const existing = await tx.project.findUnique({ where: { id } })
     if (!existing) {
@@ -416,5 +437,6 @@ export async function deleteProjectService(id: string) {
       where: { id },
       data: { archived: true, deletedAt: new Date() },
     })
+    ctx.log.debug('Project archived:', id)
   })
 }

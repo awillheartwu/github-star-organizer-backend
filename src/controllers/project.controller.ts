@@ -4,6 +4,7 @@ import { ProjectQuerySchema, CreateProjectBodySchema } from '../schemas/project.
 import { getPagination } from '../helpers/pagination.helper'
 import { AppError } from '../helpers/error.helper'
 import { HTTP_STATUS, ERROR_TYPES } from '../constants/errorCodes'
+import { getCtx } from '../helpers/context.helper'
 
 import * as projectService from '../services/project.service'
 
@@ -14,8 +15,14 @@ export async function getProjects(
   req: FastifyRequest<{ Querystring: ProjectQuery }>,
   reply: FastifyReply
 ) {
+  // 获取所有项目
+  const ctx = getCtx(req)
   const { page, pageSize, offset, limit } = getPagination(req.query)
-  const { data, total } = await projectService.getProjectsService({ ...req.query, offset, limit })
+  const { data, total } = await projectService.getProjectsService(ctx, {
+    ...req.query,
+    offset,
+    limit,
+  })
   reply.send({
     message: 'get all projects',
     data,
@@ -29,8 +36,9 @@ export async function getProjectById(
   req: FastifyRequest<{ Params: { id: string } }>,
   reply: FastifyReply
 ) {
+  const ctx = getCtx(req)
   const { id } = req.params
-  const project = await projectService.getProjectByIdService(id)
+  const project = await projectService.getProjectByIdService(ctx, id)
   if (!project) {
     throw new AppError(
       `Project not found: ${id}`,
@@ -46,7 +54,8 @@ export async function createProject(
   req: FastifyRequest<{ Body: CreateProjectBody }>,
   reply: FastifyReply
 ) {
-  const data = await projectService.createProjectService(req.body)
+  const ctx = getCtx(req)
+  const data = await projectService.createProjectService(ctx, req.body)
   reply.code(201).send({ message: 'create project success', data })
 }
 
@@ -54,7 +63,8 @@ export async function updateProject(
   req: FastifyRequest<{ Params: { id: string }; Body: Partial<CreateProjectBody> }>,
   reply: FastifyReply
 ) {
-  const data = await projectService.updateProjectService(req.params.id, req.body)
+  const ctx = getCtx(req)
+  const data = await projectService.updateProjectService(ctx, req.params.id, req.body)
   reply.send({ message: `update project id: ${req.params.id}`, data })
 }
 
@@ -62,6 +72,7 @@ export async function deleteProject(
   req: FastifyRequest<{ Params: { id: string } }>,
   reply: FastifyReply
 ) {
-  await projectService.deleteProjectService(req.params.id)
+  const ctx = getCtx(req)
+  await projectService.deleteProjectService(ctx, req.params.id)
   reply.code(204).send()
 }

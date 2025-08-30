@@ -1,4 +1,3 @@
-import { prisma } from '../plugins/prisma'
 import { Static } from '@sinclair/typebox'
 import { TagQuerySchema, CreateTagBodySchema } from '../schemas/tag.schema'
 import { AppError } from '../helpers/error.helper'
@@ -6,13 +5,14 @@ import { Tag } from '@prisma/client'
 import { HTTP_STATUS, ERROR_TYPES } from '../constants/errorCodes'
 import type { TagWithRelations } from '../helpers/transform.helper.js'
 import { toTagDto } from '../helpers/transform.helper'
+import { Ctx } from '../helpers/context.helper'
 
 type TagQuery = Static<typeof TagQuerySchema> & { offset: number; limit: number }
 type CreateTagBody = Static<typeof CreateTagBodySchema>
 
 const ORDERABLE = new Set<keyof Tag>(['createdAt', 'updatedAt', 'name'])
 
-export async function getTagsService(query: TagQuery) {
+export async function getTagsService(ctx: Ctx, query: TagQuery) {
   const { offset, limit, archived, keyword, orderBy, orderDirection } = query
 
   // 构建查询条件
@@ -33,26 +33,26 @@ export async function getTagsService(query: TagQuery) {
     order.createdAt = 'desc' // 默认按创建时间降序
   }
 
-  console.log('conditions', JSON.stringify(conditions, null, 2))
-  console.log('order', order, { offset, limit })
+  ctx.log.debug({ conditions, order, offset, limit }, 'tag.list query built')
+  ctx.log.debug('order', order, { offset, limit })
 
   // 查询
   const [data, total] = await Promise.all([
-    prisma.tag.findMany({
+    ctx.prisma.tag.findMany({
       skip: offset,
       take: limit,
       where: conditions,
       orderBy: order,
       select: { id: true, name: true, description: true },
     }),
-    prisma.tag.count({ where: conditions }),
+    ctx.prisma.tag.count({ where: conditions }),
   ])
-
+  ctx.log.debug(`Found ${total} tags matching conditions`)
   return { data, total }
 }
 
-export async function getTagByIdService(id: string) {
-  const tag = await prisma.tag.findUnique({
+export async function getTagByIdService(ctx: Ctx, id: string) {
+  const tag = await ctx.prisma.tag.findUnique({
     where: { id },
     include: {
       projects: {
@@ -63,12 +63,13 @@ export async function getTagByIdService(id: string) {
     },
   })
   if (!tag || tag.archived) return null
+  ctx.log.debug('Tag found:', tag)
   return toTagDto(tag as TagWithRelations)
 }
 
-export async function createTagService(tagData: CreateTagBody) {
+export async function createTagService(ctx: Ctx, tagData: CreateTagBody) {
   // 检查同名 tag
-  const existing = await prisma.tag.findFirst({
+  const existing = await ctx.prisma.tag.findFirst({
     where: { name: tagData.name, archived: false },
   })
   if (existing) {
@@ -79,14 +80,15 @@ export async function createTagService(tagData: CreateTagBody) {
       { name: tagData.name }
     )
   }
-  const tag = await prisma.tag.create({ data: tagData })
+  const tag = await ctx.prisma.tag.create({ data: tagData })
+  ctx.log.debug('Tag created:', tag)
   return tag
 }
 
-export async function updateTagService(id: string, tagData: Partial<CreateTagBody>) {
+export async function updateTagService(ctx: Ctx, id: string, tagData: Partial<CreateTagBody>) {
   // 检查同名 tag
   if (tagData.name) {
-    const existing = await prisma.tag.findFirst({
+    const existing = await ctx.prisma.tag.findFirst({
       where: { name: tagData.name },
     })
     if (existing && existing.id !== id) {
@@ -106,12 +108,13 @@ export async function updateTagService(id: string, tagData: Partial<CreateTagBod
       )
     }
   }
-  const tag = await prisma.tag.update({ where: { id }, data: tagData })
+  const tag = await ctx.prisma.tag.update({ where: { id }, data: tagData })
+  ctx.log.debug('Tag updated:', tag)
   return tag
 }
 
-export async function deleteTagService(id: string) {
-  await prisma.$transaction(async (tx) => {
+export async function deleteTagService(ctx: Ctx, id: string) {
+  await ctx.prisma.$transaction(async (tx) => {
     // 1. 确认存在
     const existing = await tx.tag.findUnique({ where: { id } })
     if (!existing) {
@@ -136,5 +139,6 @@ export async function deleteTagService(id: string) {
 
     // 3. 删除 tag
     await tx.tag.update({ where: { id }, data: { archived: true, updatedAt: new Date() } })
+    ctx.log.debug('Tag archived:', id)
   })
 }
