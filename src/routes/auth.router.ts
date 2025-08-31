@@ -1,6 +1,5 @@
 // src/routes/auth.router.ts
 import { FastifyInstance } from 'fastify'
-import * as controller from '../controllers/auth.controller'
 import {
   AuthTag,
   RegisterBodySchema,
@@ -10,6 +9,7 @@ import {
   MeResponseSchema,
   BasicMessageSchema,
 } from '../schemas/auth.schema'
+import { authController } from '../controllers'
 
 export default async function authRoutes(fastify: FastifyInstance) {
   // 注册（受开关控制，controller 内部判断 config.authAllowRegistration）
@@ -24,7 +24,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
         response: { 201: BasicMessageSchema },
       },
     },
-    controller.register
+    authController.register
   )
 
   // 登录：返回 accessToken；refresh 通过 httpOnly Cookie 下发
@@ -46,7 +46,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
         response: { 200: AccessTokenResponseSchema },
       },
     },
-    controller.login
+    authController.login
   )
 
   // 刷新：旋转 refresh，返回新的 accessToken
@@ -67,7 +67,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
         response: { 200: AccessTokenResponseSchema },
       },
     },
-    controller.refresh
+    authController.refresh
   )
 
   // 登出：撤销当前 refresh + 清 cookie（需要已登录）
@@ -83,7 +83,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
         security: [{ bearerAuth: [] }],
       },
     },
-    controller.logout
+    authController.logout
   )
 
   // 当前用户信息（从 access token 解出）
@@ -99,7 +99,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
         security: [{ bearerAuth: [] }],
       },
     },
-    controller.me
+    authController.me
   )
 
   // 修改密码（需要 access；成功后可选：强制下线所有 refresh）
@@ -123,6 +123,6 @@ export default async function authRoutes(fastify: FastifyInstance) {
         security: [{ bearerAuth: [] }],
       },
     },
-    controller.changePassword
+    authController.changePassword
   )
 }

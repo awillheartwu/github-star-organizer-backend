@@ -6,7 +6,7 @@ import {
   BaseProjectResponseSchema,
 } from '../schemas/project.schema'
 import { Type } from '@sinclair/typebox'
-import * as projectController from '../controllers/project.controller'
+import { projectController } from '../controllers'
 
 export default async function projectRoutes(fastify: FastifyInstance) {
   fastify.get(

@@ -1,3 +1,4 @@
 export * as projectController from './project.controller'
 export * as tagController from './tag.controller'
 export * as authController from './auth.controller'
+export * as adminController from './admin.controller'

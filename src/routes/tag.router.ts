@@ -7,7 +7,7 @@ import {
   TagCreateResponseSchema,
 } from '../schemas/tag.schema'
 import { Type } from '@sinclair/typebox'
-import * as tagController from '../controllers/tag.controller'
+import { tagController } from '../controllers'
 
 const TagUpdateBodySchema = TagCreateResponseSchema
 

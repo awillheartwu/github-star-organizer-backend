@@ -1,6 +1,6 @@
 // src/routes/admin.router.ts
 import { FastifyInstance } from 'fastify'
-import * as admin from '../controllers/admin.controller'
+import { adminController } from '../controllers'
 import { AdminTag, SetRoleBodySchema, BasicMessageSchema } from '../schemas/admin.schema'
 
 export default async function adminRoutes(fastify: FastifyInstance) {
@@ -24,6 +24,6 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         security: [{ bearerAuth: [] }], // swagger 需要带 AT
       },
     },
-    admin.setRole
+    adminController.setRole
   )
 }
