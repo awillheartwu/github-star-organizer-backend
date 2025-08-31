@@ -103,3 +103,44 @@ model VideoLink {
   @@index([projectId])
   @@index([archived, createdAt]) // 常用 where archived=false 排序 createdAt
 }
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  displayName  String?
+  role         UserRole @default(USER)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  refreshTokens RefreshToken[]
+
+  @@index([createdAt])
+}
+
+model RefreshToken {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // 只存哈希（避免明文落库）
+  tokenHash String @unique
+  jti       String @unique
+
+  revoked           Boolean  @default(false)
+  replacedByTokenId String?
+  expiresAt         DateTime
+  createdAt         DateTime @default(now())
+
+  ip        String?
+  userAgent String?
+
+  @@index([userId])
+  @@index([revoked, expiresAt])
+}

@@ -12,12 +12,14 @@ export default async function projectRoutes(fastify: FastifyInstance) {
   fastify.get(
     '/projects',
     {
+      onRequest: [fastify.verifyAccess],
       schema: {
         description: '获取所有项目',
         tags: ['Project'],
         querystring: ProjectQuerySchema,
         response: { 200: ProjectListResponseSchema },
         summary: 'Get all projects',
+        security: [{ bearerAuth: [] }],
       },
     },
     projectController.getProjects
@@ -25,12 +27,14 @@ export default async function projectRoutes(fastify: FastifyInstance) {
   fastify.get(
     '/projects/:id',
     {
+      onRequest: [fastify.verifyAccess],
       schema: {
         description: '获取单个项目',
         tags: ['Project'],
         params: Type.Object({ id: Type.String({ format: 'uuid' }) }),
         response: { 200: BaseProjectResponseSchema },
         summary: 'Get a project by id',
+        security: [{ bearerAuth: [] }],
       },
     },
     projectController.getProjectById
@@ -38,12 +42,14 @@ export default async function projectRoutes(fastify: FastifyInstance) {
   fastify.post(
     '/projects',
     {
+      onRequest: [fastify.verifyAccess, fastify.roleGuard('ADMIN')],
       schema: {
         description: '创建项目',
         tags: ['Project'],
         body: CreateProjectBodySchema,
         response: { 201: BaseProjectResponseSchema },
         summary: 'Create a project',
+        security: [{ bearerAuth: [] }],
       },
     },
     projectController.createProject
@@ -51,6 +57,7 @@ export default async function projectRoutes(fastify: FastifyInstance) {
   fastify.put(
     '/projects/:id',
     {
+      onRequest: [fastify.verifyAccess, fastify.roleGuard('ADMIN')],
       schema: {
         description: '更新项目',
         tags: ['Project'],
@@ -58,6 +65,7 @@ export default async function projectRoutes(fastify: FastifyInstance) {
         body: Type.Partial(CreateProjectBodySchema),
         response: { 200: BaseProjectResponseSchema },
         summary: 'Update a project',
+        security: [{ bearerAuth: [] }],
       },
     },
     projectController.updateProject
@@ -65,12 +73,14 @@ export default async function projectRoutes(fastify: FastifyInstance) {
   fastify.delete(
     '/projects/:id',
     {
+      onRequest: [fastify.verifyAccess, fastify.roleGuard('ADMIN')],
       schema: {
         description: '删除项目',
         tags: ['Project'],
         params: Type.Object({ id: Type.String({ format: 'uuid' }) }),
         response: { 204: Type.Null() },
         summary: 'Delete a project',
+        security: [{ bearerAuth: [] }],
       },
     },
     projectController.deleteProject

@@ -35,6 +35,31 @@ const EnvSchema = Type.Object(
     DATABASE_URL: Type.String({ default: 'file:./dev.db' }),
     GITHUB_TOKEN: Type.Optional(Type.String()),
     DEEPSEEK_API_KEY: Type.Optional(Type.String()),
+    // cors相关
+    CORS_ORIGIN: Type.Optional(Type.String({ default: '*' })), // 允许的 origin，多个可用逗号分隔
+    CORS_CREDENTIALS: Type.Optional(Type.Boolean({ default: false })),
+    TRUST_PROXY: Type.Optional(Type.Boolean({ default: false })),
+    BODY_LIMIT: Type.Optional(Type.Number({ default: 1048576 })), // 1MB
+    HELMET_CSP: Type.Optional(Type.Boolean({ default: true })), // 是否启用 CSP
+    // auth 相关
+    JWT_ACCESS_SECRET: Type.String(),
+    JWT_REFRESH_SECRET: Type.String(),
+    JWT_ACCESS_EXPIRES: Type.String({ default: '15m' }),
+    JWT_REFRESH_EXPIRES: Type.String({ default: '30d' }),
+
+    AUTH_COOKIE_NAME: Type.String({ default: 'rt' }),
+    AUTH_COOKIE_DOMAIN: Type.Optional(Type.String()), // 可为空
+    AUTH_COOKIE_SECURE: Type.Boolean({ default: false }),
+    AUTH_COOKIE_SAME_SITE: Type.Union(
+      [Type.Literal('lax'), Type.Literal('strict'), Type.Literal('none')],
+      { default: 'lax' }
+    ),
+
+    AUTH_ALLOW_REGISTRATION: Type.Boolean({ default: true }),
+
+    // 可选：限流
+    RATE_LIMIT_WINDOW: Type.Optional(Type.Number({ default: 60000 })), // ms
+    RATE_LIMIT_MAX: Type.Optional(Type.Number({ default: 20 })),
   },
   { additionalProperties: false }
 )
@@ -58,6 +83,28 @@ const AppConfigSchema = Type.Object(
     databaseUrl: Type.String(),
     githubToken: Type.Optional(Type.String()),
     deepseekApiKey: Type.Optional(Type.String()),
+    corsOrigin: Type.String(),
+    corsCredentials: Type.Boolean(),
+    trustProxy: Type.Boolean(),
+    bodyLimit: Type.Number(),
+    helmetCsp: Type.Boolean(),
+    jwtAccessSecret: Type.String(),
+    jwtRefreshSecret: Type.String(),
+    jwtAccessExpires: Type.String(),
+    jwtRefreshExpires: Type.String(),
+
+    authCookieName: Type.String(),
+    authCookieDomain: Type.Optional(Type.String()),
+    authCookieSecure: Type.Boolean(),
+    authCookieSameSite: Type.Union([
+      Type.Literal('lax'),
+      Type.Literal('strict'),
+      Type.Literal('none'),
+    ]),
+    authAllowRegistration: Type.Boolean(),
+
+    rateLimitWindow: Type.Optional(Type.Number()), // ms
+    rateLimitMax: Type.Optional(Type.Number()),
   },
   { additionalProperties: false }
 )
@@ -75,6 +122,22 @@ export function loadConfig(): AppConfig {
     DATABASE_URL: process.env.DATABASE_URL,
     GITHUB_TOKEN: process.env.GITHUB_TOKEN,
     DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY,
+    CORS_ORIGIN: process.env.CORS_ORIGIN,
+    CORS_CREDENTIALS: process.env.CORS_CREDENTIALS,
+    TRUST_PROXY: process.env.TRUST_PROXY,
+    BODY_LIMIT: process.env.BODY_LIMIT,
+    HELMET_CSP: process.env.HELMET_CSP,
+    JWT_ACCESS_SECRET: process.env.JWT_ACCESS_SECRET,
+    JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET,
+    JWT_ACCESS_EXPIRES: process.env.JWT_ACCESS_EXPIRES,
+    JWT_REFRESH_EXPIRES: process.env.JWT_REFRESH_EXPIRES,
+    AUTH_COOKIE_NAME: process.env.AUTH_COOKIE_NAME,
+    AUTH_COOKIE_DOMAIN: process.env.AUTH_COOKIE_DOMAIN,
+    AUTH_COOKIE_SECURE: process.env.AUTH_COOKIE_SECURE,
+    AUTH_COOKIE_SAME_SITE: process.env.AUTH_COOKIE_SAME_SITE,
+    AUTH_ALLOW_REGISTRATION: process.env.AUTH_ALLOW_REGISTRATION,
+    RATE_LIMIT_WINDOW: process.env.RATE_LIMIT_WINDOW,
+    RATE_LIMIT_MAX: process.env.RATE_LIMIT_MAX,
   }
 
   // Coerce and validate using TypeBox Value tools
@@ -87,6 +150,22 @@ export function loadConfig(): AppConfig {
     databaseUrl: coerced.DATABASE_URL,
     githubToken: coerced.GITHUB_TOKEN,
     deepseekApiKey: coerced.DEEPSEEK_API_KEY,
+    corsOrigin: coerced.CORS_ORIGIN,
+    corsCredentials: coerced.CORS_CREDENTIALS,
+    trustProxy: coerced.TRUST_PROXY,
+    bodyLimit: coerced.BODY_LIMIT,
+    helmetCsp: coerced.HELMET_CSP,
+    jwtAccessSecret: coerced.JWT_ACCESS_SECRET,
+    jwtRefreshSecret: coerced.JWT_REFRESH_SECRET,
+    jwtAccessExpires: coerced.JWT_ACCESS_EXPIRES,
+    jwtRefreshExpires: coerced.JWT_REFRESH_EXPIRES,
+    authCookieName: coerced.AUTH_COOKIE_NAME,
+    authCookieDomain: coerced.AUTH_COOKIE_DOMAIN,
+    authCookieSecure: coerced.AUTH_COOKIE_SECURE,
+    authCookieSameSite: coerced.AUTH_COOKIE_SAME_SITE,
+    authAllowRegistration: coerced.AUTH_ALLOW_REGISTRATION,
+    rateLimitWindow: coerced.RATE_LIMIT_WINDOW,
+    rateLimitMax: coerced.RATE_LIMIT_MAX,
   }
 
   // Final assert (defensive) and freeze for immutability

@@ -23,6 +23,8 @@ export const ERROR_TYPES = {
   NOT_FOUND: 'NotFound',
   PRISMA_UNIQUE: 'PrismaUniqueError',
   CONFLICT: 'ConflictError',
+  UNAUTHORIZED: 'UnauthorizedError',
+  FORBIDDEN: 'ForbiddenError',
 } as const
 
 // Prisma 错误码映射

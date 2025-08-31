@@ -13,11 +13,26 @@ import fastifySwaggerUI from '@fastify/swagger-ui'
 async function bootstrap() {
   const app = Fastify({
     logger: { level: config.logLevel || 'info' },
+    trustProxy: config.trustProxy,
+    bodyLimit: config.bodyLimit,
   }).withTypeProvider<TypeBoxTypeProvider>()
 
-  app.register(formbody)
-  app.register(cors)
-  app.register(helmet)
+  await app.register(formbody)
+  await app.register(cors, {
+    origin: config.corsOrigin,
+    credentials: config.corsCredentials,
+  })
+  await app.register(helmet, {
+    contentSecurityPolicy: config.helmetCsp
+      ? {
+          directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", 'https:'],
+            objectSrc: ["'none'"],
+          },
+        }
+      : false,
+  })
 
   // 错误处理
   app.setErrorHandler((error, request, reply) => {
@@ -32,6 +47,16 @@ async function bootstrap() {
         description: 'API Docs',
         version: '0.1.0',
       },
+      components: {
+        securitySchemes: {
+          bearerAuth: {
+            type: 'http',
+            scheme: 'bearer',
+            bearerFormat: 'JWT',
+          },
+        },
+      },
+      // security: [{ bearerAuth: [] }],
     },
   })
 
