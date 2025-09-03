@@ -5,6 +5,7 @@ import { SYNC_STARS_JOB, SYNC_STARS_QUEUE } from '../constants/queueNames'
 import type { SyncJobData, SyncStats } from '../types/sync.types'
 import type { Ctx } from '../helpers/context.helper'
 import { handleSyncStarsJob } from '../services/sync/github/githubStar.service'
+import * as notify from '../services/notify.service'
 
 export default fp(
   async (app) => {
@@ -74,11 +75,21 @@ export default fp(
       worker.on('error', (err) => {
         app.log.error({ err }, '[BullMQ] Worker error')
       })
-      worker.on('completed', (job, result) => {
+      worker.on('completed', async (job, result) => {
         app.log.info({ jobId: job.id, result }, '[BullMQ] Worker completed job')
+        try {
+          await notify.sendSyncCompleted(app, job.id!, result as SyncStats)
+        } catch (e) {
+          app.log.warn({ e }, '[BullMQ] notify completed mail failed')
+        }
       })
-      worker.on('failed', (job, err) => {
+      worker.on('failed', async (job, err) => {
         app.log.error({ jobId: job?.id, err }, '[BullMQ] Worker failed job')
+        try {
+          if (job?.id) await notify.sendSyncFailed(app, job.id, err)
+        } catch (e) {
+          app.log.warn({ e }, '[BullMQ] notify failed mail failed')
+        }
       })
     } else {
       app.log.info(`[BullMQ] bullRole=${app.config.bullRole}; worker not started`)

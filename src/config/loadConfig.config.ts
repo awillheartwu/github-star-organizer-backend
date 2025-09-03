@@ -83,6 +83,15 @@ const EnvSchema = Type.Object(
     SYNC_MAX_PAGES: Type.Optional(Type.Number({ default: 0 })), // 0=不限
     SYNC_SOFT_DELETE_UNSTARRED: Type.Optional(Type.Boolean({ default: false })),
     SYNC_REQUEST_TIMEOUT: Type.Optional(Type.Number({ default: 15000 })),
+    // 邮件通知（可选）
+    NOTIFY_EMAIL_ENABLED: Type.Optional(Type.Boolean({ default: false })),
+    SMTP_HOST: Type.Optional(Type.String()),
+    SMTP_PORT: Type.Optional(Type.Number({ default: 465 })),
+    SMTP_SECURE: Type.Optional(Type.Boolean({ default: true })),
+    SMTP_USER: Type.Optional(Type.String()),
+    SMTP_PASS: Type.Optional(Type.String()),
+    MAIL_FROM: Type.Optional(Type.String()),
+    MAIL_TO: Type.Optional(Type.String()),
   },
 
   { additionalProperties: false }
@@ -146,6 +155,15 @@ const AppConfigSchema = Type.Object(
     syncMaxPages: Type.Optional(Type.Number()),
     syncSoftDeleteUnstarred: Type.Optional(Type.Boolean()),
     syncRequestTimeout: Type.Optional(Type.Number()),
+    // 邮件
+    notifyEmailEnabled: Type.Optional(Type.Boolean()),
+    smtpHost: Type.Optional(Type.String()),
+    smtpPort: Type.Optional(Type.Number()),
+    smtpSecure: Type.Optional(Type.Boolean()),
+    smtpUser: Type.Optional(Type.String()),
+    smtpPass: Type.Optional(Type.String()),
+    mailFrom: Type.Optional(Type.String()),
+    mailTo: Type.Optional(Type.String()),
   },
   { additionalProperties: false }
 )
@@ -195,6 +213,14 @@ export function loadConfig(): AppConfig {
     SYNC_MAX_PAGES: process.env.SYNC_MAX_PAGES,
     SYNC_SOFT_DELETE_UNSTARRED: process.env.SYNC_SOFT_DELETE_UNSTARRED,
     SYNC_REQUEST_TIMEOUT: process.env.SYNC_REQUEST_TIMEOUT,
+    NOTIFY_EMAIL_ENABLED: process.env.NOTIFY_EMAIL_ENABLED,
+    SMTP_HOST: process.env.SMTP_HOST,
+    SMTP_PORT: process.env.SMTP_PORT,
+    SMTP_SECURE: process.env.SMTP_SECURE,
+    SMTP_USER: process.env.SMTP_USER,
+    SMTP_PASS: process.env.SMTP_PASS,
+    MAIL_FROM: process.env.MAIL_FROM,
+    MAIL_TO: process.env.MAIL_TO,
   }
 
   // Coerce and validate using TypeBox Value tools
@@ -239,6 +265,14 @@ export function loadConfig(): AppConfig {
     syncMaxPages: coerced.SYNC_MAX_PAGES,
     syncSoftDeleteUnstarred: coerced.SYNC_SOFT_DELETE_UNSTARRED,
     syncRequestTimeout: coerced.SYNC_REQUEST_TIMEOUT,
+    notifyEmailEnabled: coerced.NOTIFY_EMAIL_ENABLED,
+    smtpHost: coerced.SMTP_HOST,
+    smtpPort: coerced.SMTP_PORT,
+    smtpSecure: coerced.SMTP_SECURE,
+    smtpUser: coerced.SMTP_USER,
+    smtpPass: coerced.SMTP_PASS,
+    mailFrom: coerced.MAIL_FROM,
+    mailTo: coerced.MAIL_TO,
   }
 
   // Final assert (defensive) and freeze for immutability

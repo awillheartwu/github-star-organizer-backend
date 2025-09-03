@@ -65,7 +65,7 @@ export async function login(req: FastifyRequest, reply: FastifyReply) {
 export async function refresh(req: FastifyRequest, reply: FastifyReply) {
   const ctx = getCtx(req)
   const token = (req.cookies as Record<string, string> | undefined)?.[ctx.config?.authCookieName]
-  ctx.log.debug({ token }, 'refresh token from cookie')
+  ctx.log.debug('refresh token from cookie')
   if (!token) {
     throw new AppError(
       'No refresh token',

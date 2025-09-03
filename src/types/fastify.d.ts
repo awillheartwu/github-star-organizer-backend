@@ -35,6 +35,16 @@ declare module 'fastify' {
     // 刷新用 httpOnly Cookie 的设置/清除
     setRefreshCookie: (reply: FastifyReply, token: string) => void
     clearRefreshCookie: (reply: FastifyReply) => void
+
+    // 简易邮件发送器
+    mailer: {
+      send: (opts: {
+        to: string | string[]
+        subject: string
+        text?: string
+        html?: string
+      }) => Promise<void>
+    }
   }
 
   interface FastifyRequest {

@@ -92,6 +92,27 @@ async function main() {
   } catch (err) {
     app.log.error({ err }, 'Job failed or timed out')
   } finally {
+    // 追加：构造一个失败用例（使用未知的 job name 触发 worker 抛错 → 失败邮件）
+    try {
+      const failJob = await app.queues.syncStars.add(
+        'sync-stars-invalid',
+        { options: opts, actor: 'manual', note: 'force a fail for mail test' },
+        { removeOnComplete: true, removeOnFail: true, jobId: `${manualJobId}:fail` }
+      )
+      try {
+        await failJob.waitUntilFinished(events, 10_000)
+        app.log.warn({ id: failJob.id }, 'Expected failure but job completed')
+      } catch (e) {
+        console.log('Failure job errored as expected:', e)
+        app.log.info(
+          { id: failJob.id },
+          'Failure job behaved as expected (should trigger fail mail)'
+        )
+      }
+    } catch (e) {
+      app.log.warn({ e }, 'Enqueue fail-case job failed')
+    }
+
     await events.close()
     await app.close()
   }
