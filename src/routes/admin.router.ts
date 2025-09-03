@@ -9,6 +9,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     {
       config: {
         rateLimit: {
+          groupId: 'admin',
           timeWindow: fastify.config.rateLimitWindow,
           max: Math.min(fastify.config.rateLimitMax, 10),
           hook: 'onRequest',

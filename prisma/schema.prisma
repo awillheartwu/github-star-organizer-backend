@@ -33,6 +33,7 @@ model Project {
   forks       Int       @default(0) // Fork 数量
   lastCommit  DateTime? // 最后一次提交时间（可选）
   lastSyncAt  DateTime  @default(now()) // 最后同步时间
+  touchedAt   DateTime? // 最近一次被同步任务“触达”的时间（内容未变也会更新）
 
   // Custom info
   notes      String? // 用户备注
@@ -58,6 +59,7 @@ model Project {
   @@index([language])
   @@index([lastCommit])
   @@index([lastSyncAt])
+  @@index([touchedAt])
   @@index([name]) // name 模糊匹配也有帮助（SQLite 里作用有限，但保留可读性）
 }
 
@@ -143,4 +145,40 @@ model RefreshToken {
 
   @@index([userId])
   @@index([revoked, expiresAt])
+}
+
+/// 记录各类同步任务的游标与状态
+/// 兼容多来源与多任务，通过 (source, key) 唯一定位。
+model SyncState {
+  id           String   @id @default(uuid())
+
+  /// 同步来源：例如 'github:stars'
+  source       String
+
+  /// 任务键：例如 'user:YOUR_GITHUB_USERNAME'
+  key          String
+
+  /// 用于增量同步的游标（例如 GitHub starred_at 的 ISO 字符串）
+  cursor       String?   // e.g. "2025-09-01T05:11:22Z"
+
+  /// HTTP ETag（If-None-Match/304），可选加速
+  etag         String?
+
+  /// 最近一次运行时间/成功时间/失败时间
+  lastRunAt     DateTime? 
+  lastSuccessAt DateTime?
+  lastErrorAt   DateTime?
+
+  /// 最近一次错误信息（简要）
+  lastError     String?
+
+  /// 最近一次统计信息（JSON 串，记录 created/updated 等）
+  statsJson    String?
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @default(now()) @updatedAt
+
+  @@unique([source, key])  // 一个来源+键只保留一条状态
+  @@index([source])
+  @@index([updatedAt])
 }

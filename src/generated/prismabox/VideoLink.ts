@@ -32,6 +32,7 @@ export const VideoLinkRelations = Type.Object(
         forks: Type.Integer(),
         lastCommit: __nullable__(Type.String({ format: "date-time" })),
         lastSyncAt: Type.String({ format: "date-time" }),
+        touchedAt: __nullable__(Type.String({ format: "date-time" })),
         notes: __nullable__(Type.String()),
         favorite: Type.Boolean(),
         archived: Type.Boolean(),

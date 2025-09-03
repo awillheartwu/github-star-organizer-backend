@@ -71,16 +71,13 @@ async function bootstrap() {
   app.swagger()
 
   // 优雅关闭
-  closeWithGrace(
-    { delay: parseInt(process.env.FASTIFY_CLOSE_GRACE_DELAY || '500') },
-    async ({ err }) => {
-      if (err) app.log.error(err)
-      await app.close()
-    }
-  )
+  closeWithGrace({ delay: parseInt(config.fastifyCloseGraceDelay) }, async ({ err }) => {
+    if (err) app.log.error(err)
+    await app.close()
+  })
 
   // 启动服务
-  app.listen({ port: parseInt(process.env.PORT || '3000') }, (err) => {
+  app.listen({ port: config.port! }, (err) => {
     if (err) {
       app.log.error(err)
       process.exit(1)

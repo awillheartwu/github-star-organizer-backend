@@ -20,6 +20,7 @@ const EnvSchema = Type.Object(
       default: 'development',
     }),
     PORT: Type.Number({ default: 3000 }),
+    FASTIFY_CLOSE_GRACE_DELAY: Type.String({ default: '500' }), // ms
     LOG_LEVEL: Type.Union(
       [
         Type.Literal('fatal'),
@@ -33,7 +34,6 @@ const EnvSchema = Type.Object(
       { default: 'info' }
     ),
     DATABASE_URL: Type.String({ default: 'file:./dev.db' }),
-    GITHUB_TOKEN: Type.Optional(Type.String()),
     DEEPSEEK_API_KEY: Type.Optional(Type.String()),
     // cors相关
     CORS_ORIGIN: Type.Optional(Type.String({ default: '*' })), // 允许的 origin，多个可用逗号分隔
@@ -60,7 +60,27 @@ const EnvSchema = Type.Object(
     // 可选：限流
     RATE_LIMIT_WINDOW: Type.Optional(Type.Number({ default: 60000 })), // ms
     RATE_LIMIT_MAX: Type.Optional(Type.Number({ default: 20 })),
+
+    // 放在 EnvSchema 的对象里（保持风格一致）
+    REDIS_HOST: Type.String({}),
+    REDIS_PORT: Type.Number({ default: 6379 }),
+    REDIS_PASSWORD: Type.String({}),
+    BULL_PREFIX: Type.String({ default: 'gsor' }), // bullmq key 前缀
+
+    // 同步任务参数
+    GITHUB_TOKEN: Type.Optional(Type.String()),
+    GITHUB_USERNAME: Type.String(), // 拉谁的 stars
+
+    SYNC_STARS_CRON: Type.Optional(Type.String({ default: '0 5 * * *' })), // 每天 05:00
+    SYNC_CONCURRENCY: Type.Optional(Type.Number({ default: 2 })), // worker 并发
+    SYNC_JOB_ATTEMPTS: Type.Optional(Type.Number({ default: 3 })),
+    SYNC_JOB_BACKOFF_MS: Type.Optional(Type.Number({ default: 30000 })),
+    SYNC_PER_PAGE: Type.Optional(Type.Number({ default: 50 })),
+    SYNC_MAX_PAGES: Type.Optional(Type.Number({ default: 0 })), // 0=不限
+    SYNC_SOFT_DELETE_UNSTARRED: Type.Optional(Type.Boolean({ default: false })),
+    SYNC_REQUEST_TIMEOUT: Type.Optional(Type.Number({ default: 15000 })),
   },
+
   { additionalProperties: false }
 )
 
@@ -71,6 +91,7 @@ const AppConfigSchema = Type.Object(
   {
     env: Type.Union([Type.Literal('development'), Type.Literal('production')]),
     port: Type.Number(),
+    fastifyCloseGraceDelay: Type.String({ default: '500' }), // ms
     logLevel: Type.Union([
       Type.Literal('fatal'),
       Type.Literal('error'),
@@ -105,6 +126,21 @@ const AppConfigSchema = Type.Object(
 
     rateLimitWindow: Type.Optional(Type.Number()), // ms
     rateLimitMax: Type.Optional(Type.Number()),
+
+    redisHost: Type.String({}),
+    redisPort: Type.Number({ default: 6379 }),
+    redisPassword: Type.String({}),
+    bullPrefix: Type.String(),
+
+    githubUsername: Type.String(),
+    syncStarsCron: Type.Optional(Type.String()),
+    syncConcurrency: Type.Optional(Type.Number()),
+    syncJobAttempts: Type.Optional(Type.Number()),
+    syncJobBackoffMs: Type.Optional(Type.Number()),
+    syncPerPage: Type.Optional(Type.Number()),
+    syncMaxPages: Type.Optional(Type.Number()),
+    syncSoftDeleteUnstarred: Type.Optional(Type.Boolean()),
+    syncRequestTimeout: Type.Optional(Type.Number()),
   },
   { additionalProperties: false }
 )
@@ -118,6 +154,7 @@ export function loadConfig(): AppConfig {
   const raw = {
     NODE_ENV: process.env.NODE_ENV,
     PORT: process.env.PORT,
+    FASTIFY_CLOSE_GRACE_DELAY: process.env.FASTIFY_CLOSE_GRACE_DELAY,
     LOG_LEVEL: process.env.LOG_LEVEL,
     DATABASE_URL: process.env.DATABASE_URL,
     GITHUB_TOKEN: process.env.GITHUB_TOKEN,
@@ -138,6 +175,20 @@ export function loadConfig(): AppConfig {
     AUTH_ALLOW_REGISTRATION: process.env.AUTH_ALLOW_REGISTRATION,
     RATE_LIMIT_WINDOW: process.env.RATE_LIMIT_WINDOW,
     RATE_LIMIT_MAX: process.env.RATE_LIMIT_MAX,
+    REDIS_HOST: process.env.REDIS_HOST,
+    REDIS_PORT: process.env.REDIS_PORT,
+    REDIS_PASSWORD: process.env.REDIS_PASSWORD,
+    BULL_PREFIX: process.env.BULL_PREFIX,
+
+    GITHUB_USERNAME: process.env.GITHUB_USERNAME,
+    SYNC_STARS_CRON: process.env.SYNC_STARS_CRON,
+    SYNC_CONCURRENCY: process.env.SYNC_CONCURRENCY,
+    SYNC_JOB_ATTEMPTS: process.env.SYNC_JOB_ATTEMPTS,
+    SYNC_JOB_BACKOFF_MS: process.env.SYNC_JOB_BACKOFF_MS,
+    SYNC_PER_PAGE: process.env.SYNC_PER_PAGE,
+    SYNC_MAX_PAGES: process.env.SYNC_MAX_PAGES,
+    SYNC_SOFT_DELETE_UNSTARRED: process.env.SYNC_SOFT_DELETE_UNSTARRED,
+    SYNC_REQUEST_TIMEOUT: process.env.SYNC_REQUEST_TIMEOUT,
   }
 
   // Coerce and validate using TypeBox Value tools
@@ -146,6 +197,7 @@ export function loadConfig(): AppConfig {
   const cfg: AppConfig = {
     env: coerced.NODE_ENV,
     port: coerced.PORT,
+    fastifyCloseGraceDelay: coerced.FASTIFY_CLOSE_GRACE_DELAY,
     logLevel: coerced.LOG_LEVEL,
     databaseUrl: coerced.DATABASE_URL,
     githubToken: coerced.GITHUB_TOKEN,
@@ -166,6 +218,20 @@ export function loadConfig(): AppConfig {
     authAllowRegistration: coerced.AUTH_ALLOW_REGISTRATION,
     rateLimitWindow: coerced.RATE_LIMIT_WINDOW,
     rateLimitMax: coerced.RATE_LIMIT_MAX,
+    redisHost: coerced.REDIS_HOST,
+    redisPort: coerced.REDIS_PORT,
+    redisPassword: coerced.REDIS_PASSWORD,
+    bullPrefix: coerced.BULL_PREFIX,
+
+    githubUsername: coerced.GITHUB_USERNAME,
+    syncStarsCron: coerced.SYNC_STARS_CRON,
+    syncConcurrency: coerced.SYNC_CONCURRENCY,
+    syncJobAttempts: coerced.SYNC_JOB_ATTEMPTS,
+    syncJobBackoffMs: coerced.SYNC_JOB_BACKOFF_MS,
+    syncPerPage: coerced.SYNC_PER_PAGE,
+    syncMaxPages: coerced.SYNC_MAX_PAGES,
+    syncSoftDeleteUnstarred: coerced.SYNC_SOFT_DELETE_UNSTARRED,
+    syncRequestTimeout: coerced.SYNC_REQUEST_TIMEOUT,
   }
 
   // Final assert (defensive) and freeze for immutability

@@ -1,6 +1,9 @@
 import 'fastify'
 import { PrismaClient } from '@prisma/client'
 import { config } from '../config'
+import type { Redis } from 'ioredis'
+import type { Queue, Worker } from 'bullmq'
+import type { SyncJobData, SyncStats } from '../types/sync.types'
 
 type SameSiteMode = 'lax' | 'strict' | 'none'
 type UserJwtPayload = {
@@ -14,6 +17,14 @@ declare module 'fastify' {
   interface FastifyInstance {
     prisma: PrismaClient
     config: typeof config
+    redis: Redis
+    // BullMQ 队列与 worker
+    queues: {
+      syncStars: Queue<SyncJobData, SyncStats>
+    }
+    workers: {
+      syncStars: Worker<SyncJobData, SyncStats>
+    }
 
     // 鉴权：路由前置校验 Access Token
     verifyAccess: (request: FastifyRequest, reply: FastifyReply) => Promise<void>

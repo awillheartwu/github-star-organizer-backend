@@ -3,7 +3,6 @@ import fp from 'fastify-plugin'
 import { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify'
 import cookie from '@fastify/cookie'
 import jwt from '@fastify/jwt'
-import { config } from '../config'
 import { HTTP_STATUS, ERROR_TYPES } from '../constants/errorCodes'
 import { AppError } from '../helpers/error.helper'
 
@@ -54,9 +53,9 @@ const authPlugin: FastifyPluginAsync = async (app) => {
     parseOptions: {
       // 这些默认值只是兜底；真正下发时仍以 setRefreshCookie 的参数为准
       httpOnly: true,
-      sameSite: config.authCookieSameSite as 'lax' | 'strict' | 'none',
-      secure: config.authCookieSecure,
-      domain: config.authCookieDomain,
+      sameSite: app.config.authCookieSameSite as 'lax' | 'strict' | 'none',
+      secure: app.config.authCookieSecure,
+      domain: app.config.authCookieDomain,
       path: '/', // 默认路径
     },
   })
@@ -69,13 +68,13 @@ const authPlugin: FastifyPluginAsync = async (app) => {
    * - reply.accessSign()     等价于原生的 reply.<ns>JwtSign()
    */
   await app.register(jwt, {
-    secret: config.jwtAccessSecret,
+    secret: app.config.jwtAccessSecret,
     namespace: 'access',
     jwtVerify: 'accessVerify',
     jwtSign: 'accessSign',
     sign: {
       // Access 的签发默认过期时间（也可在具体 sign 时覆盖）
-      expiresIn: config.jwtAccessExpires,
+      expiresIn: app.config.jwtAccessExpires,
     },
   })
 
@@ -85,13 +84,13 @@ const authPlugin: FastifyPluginAsync = async (app) => {
    * 单独的密钥与过期时间，原则上长期有效，仅用于 refresh。
    */
   await app.register(jwt, {
-    secret: config.jwtRefreshSecret,
+    secret: app.config.jwtRefreshSecret,
     namespace: 'refresh',
     jwtVerify: 'refreshVerify',
     jwtSign: 'refreshSign',
-    cookie: { cookieName: config.authCookieName, signed: false }, // 允许从指定 Cookie 读取
+    cookie: { cookieName: app.config.authCookieName, signed: false }, // 允许从指定 Cookie 读取
     sign: {
-      expiresIn: config.jwtRefreshExpires,
+      expiresIn: app.config.jwtRefreshExpires,
     },
   })
 
@@ -104,21 +103,21 @@ const authPlugin: FastifyPluginAsync = async (app) => {
    * - domain 控制子域共享（例如 .yourdomain.com）
    */
   app.decorate('setRefreshCookie', (reply: FastifyReply, token: string) => {
-    const maxAge = parseDurationToSeconds(config.jwtRefreshExpires || '0')
-    reply.setCookie(config.authCookieName, token, {
+    const maxAge = parseDurationToSeconds(app.config.jwtRefreshExpires || '0')
+    reply.setCookie(app.config.authCookieName, token, {
       httpOnly: true,
-      secure: config.authCookieSecure,
-      sameSite: config.authCookieSameSite as 'lax' | 'strict' | 'none',
-      domain: config.authCookieDomain, // 例如 .yourdomain.com；本地可不设
+      secure: app.config.authCookieSecure,
+      sameSite: app.config.authCookieSameSite as 'lax' | 'strict' | 'none',
+      domain: app.config.authCookieDomain, // 例如 .yourdomain.com；本地可不设
       path: '/', // 也可限制到 '/auth' 路径
       maxAge: maxAge > 0 ? maxAge : undefined, // 秒；可不设 → 会话期 Cookie
     })
   })
 
   app.decorate('clearRefreshCookie', (reply: FastifyReply) => {
-    reply.clearCookie(config.authCookieName, {
+    reply.clearCookie(app.config.authCookieName, {
       path: '/',
-      domain: config.authCookieDomain,
+      domain: app.config.authCookieDomain,
     })
   })
 
@@ -173,4 +172,5 @@ const authPlugin: FastifyPluginAsync = async (app) => {
 
 export default fp(authPlugin, {
   name: 'auth-plugin',
+  dependencies: ['config'],
 })

@@ -12,6 +12,7 @@ export const HTTP_STATUS = {
   NOT_FOUND: { message: 'Not Found', statusCode: 404 },
   INTERNAL: { message: 'Internal Server Error', statusCode: 500 },
   CONFLICT: { message: 'Conflict', statusCode: 409 },
+  RATE_LIMIT: { message: 'Too Many Requests', statusCode: 429 },
 } as const
 
 // 错误类型
@@ -25,6 +26,7 @@ export const ERROR_TYPES = {
   CONFLICT: 'ConflictError',
   UNAUTHORIZED: 'UnauthorizedError',
   FORBIDDEN: 'ForbiddenError',
+  RATE_LIMIT: 'RateLimitError',
 } as const
 
 // Prisma 错误码映射

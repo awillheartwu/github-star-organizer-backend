@@ -17,6 +17,7 @@ export const ProjectPlain = Type.Object(
     forks: Type.Integer(),
     lastCommit: __nullable__(Type.String({ format: "date-time" })),
     lastSyncAt: Type.String({ format: "date-time" }),
+    touchedAt: __nullable__(Type.String({ format: "date-time" })),
     notes: __nullable__(Type.String()),
     favorite: Type.Boolean(),
     archived: Type.Boolean(),
@@ -82,6 +83,7 @@ export const ProjectWhere = Type.Partial(
           forks: Type.Integer(),
           lastCommit: Type.String({ format: "date-time" }),
           lastSyncAt: Type.String({ format: "date-time" }),
+          touchedAt: Type.String({ format: "date-time" }),
           notes: Type.String(),
           favorite: Type.Boolean(),
           archived: Type.Boolean(),
@@ -143,6 +145,7 @@ export const ProjectWhereUnique = Type.Recursive(
               forks: Type.Integer(),
               lastCommit: Type.String({ format: "date-time" }),
               lastSyncAt: Type.String({ format: "date-time" }),
+              touchedAt: Type.String({ format: "date-time" }),
               notes: Type.String(),
               favorite: Type.Boolean(),
               archived: Type.Boolean(),
@@ -175,6 +178,7 @@ export const ProjectSelect = Type.Partial(
       forks: Type.Boolean(),
       lastCommit: Type.Boolean(),
       lastSyncAt: Type.Boolean(),
+      touchedAt: Type.Boolean(),
       notes: Type.Boolean(),
       favorite: Type.Boolean(),
       archived: Type.Boolean(),
@@ -236,6 +240,9 @@ export const ProjectOrderBy = Type.Partial(
         additionalProperties: false,
       }),
       lastSyncAt: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
+        additionalProperties: false,
+      }),
+      touchedAt: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
         additionalProperties: false,
       }),
       notes: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {

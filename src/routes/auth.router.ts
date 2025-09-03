@@ -33,8 +33,9 @@ export default async function authRoutes(fastify: FastifyInstance) {
     {
       config: {
         rateLimit: {
+          groupId: 'auth-login',
           timeWindow: fastify.config.rateLimitWindow, // 直接复用 env
-          max: Math.min(fastify.config.rateLimitMax, 10),
+          max: Math.min(fastify.config.rateLimitMax, 5),
           hook: 'onRequest', // 限流发生在最前面
         },
       },
@@ -55,6 +56,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
     {
       config: {
         rateLimit: {
+          groupId: 'auth-refresh',
           timeWindow: fastify.config.rateLimitWindow,
           max: Math.min(fastify.config.rateLimitMax, 5),
           hook: 'onRequest',
@@ -108,6 +110,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
     {
       config: {
         rateLimit: {
+          groupId: 'auth-change-password',
           timeWindow: fastify.config.rateLimitWindow,
           max: Math.min(fastify.config.rateLimitMax, 5),
           hook: 'onRequest',
