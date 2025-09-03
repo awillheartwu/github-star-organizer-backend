@@ -66,6 +66,10 @@ const EnvSchema = Type.Object(
     REDIS_PORT: Type.Number({ default: 6379 }),
     REDIS_PASSWORD: Type.String({}),
     BULL_PREFIX: Type.String({ default: 'gsor' }), // bullmq key 前缀
+    BULL_ROLE: Type.Union(
+      [Type.Literal('both'), Type.Literal('worker'), Type.Literal('producer')],
+      { default: 'both' }
+    ),
 
     // 同步任务参数
     GITHUB_TOKEN: Type.Optional(Type.String()),
@@ -131,6 +135,7 @@ const AppConfigSchema = Type.Object(
     redisPort: Type.Number({ default: 6379 }),
     redisPassword: Type.String({}),
     bullPrefix: Type.String(),
+    bullRole: Type.Union([Type.Literal('both'), Type.Literal('worker'), Type.Literal('producer')]),
 
     githubUsername: Type.String(),
     syncStarsCron: Type.Optional(Type.String()),
@@ -179,6 +184,7 @@ export function loadConfig(): AppConfig {
     REDIS_PORT: process.env.REDIS_PORT,
     REDIS_PASSWORD: process.env.REDIS_PASSWORD,
     BULL_PREFIX: process.env.BULL_PREFIX,
+    BULL_ROLE: process.env.BULL_ROLE,
 
     GITHUB_USERNAME: process.env.GITHUB_USERNAME,
     SYNC_STARS_CRON: process.env.SYNC_STARS_CRON,
@@ -222,6 +228,7 @@ export function loadConfig(): AppConfig {
     redisPort: coerced.REDIS_PORT,
     redisPassword: coerced.REDIS_PASSWORD,
     bullPrefix: coerced.BULL_PREFIX,
+    bullRole: coerced.BULL_ROLE,
 
     githubUsername: coerced.GITHUB_USERNAME,
     syncStarsCron: coerced.SYNC_STARS_CRON,

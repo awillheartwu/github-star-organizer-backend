@@ -19,6 +19,10 @@ export default fp(
       enableReadyCheck: true,
     }
 
+    // 运行角色：both/worker/producer
+    const isWorker = app.config.bullRole === 'both' || app.config.bullRole === 'worker'
+    const isProducer = app.config.bullRole === 'both' || app.config.bullRole === 'producer'
+
     // 创建队列（含默认作业策略）
     const syncStarsQueue = new Queue<SyncJobData, SyncStats>(SYNC_STARS_QUEUE, {
       connection,
@@ -46,52 +50,67 @@ export default fp(
       app.log.error({ err }, '[BullMQ] QueueEvents error')
     })
 
-    // Worker 消费任务 (处理逻辑放 service，当前占位)
-    const worker = new Worker<SyncJobData, SyncStats>(
-      SYNC_STARS_QUEUE,
-      async (job) => {
-        app.log.info(`[BullMQ] Processing job ${job.id} (${job.name})`)
-        if (job.name !== SYNC_STARS_JOB) {
-          throw new Error(`Unknown job name: ${job.name}`)
-        }
+    // 可选启动 Worker（按角色）
+    let worker: Worker<SyncJobData, SyncStats> | undefined
+    if (isWorker) {
+      worker = new Worker<SyncJobData, SyncStats>(
+        SYNC_STARS_QUEUE,
+        async (job) => {
+          app.log.info(`[BullMQ] Processing job ${job.id} (${job.name})`)
+          if (job.name !== SYNC_STARS_JOB) {
+            throw new Error(`Unknown job name: ${job.name}`)
+          }
 
-        const ctx: Ctx = { prisma: app.prisma, log: app.log, config: app.config }
-        const stats = await handleSyncStarsJob(ctx, job.data)
-        return stats
-      },
-      {
-        connection,
-        prefix: app.config.bullPrefix,
-        concurrency: app.config.syncConcurrency ?? 1,
-      }
-    )
-    worker.on('error', (err) => {
-      app.log.error({ err }, '[BullMQ] Worker error')
-    })
-    worker.on('completed', (job, result) => {
-      app.log.info({ jobId: job.id, result }, '[BullMQ] Worker completed job')
-    })
-    worker.on('failed', (job, err) => {
-      app.log.error({ jobId: job?.id, err }, '[BullMQ] Worker failed job')
-    })
+          const ctx: Ctx = { prisma: app.prisma, log: app.log, config: app.config }
+          const stats = await handleSyncStarsJob(ctx, job.data)
+          return stats
+        },
+        {
+          connection,
+          prefix: app.config.bullPrefix,
+          concurrency: app.config.syncConcurrency ?? 1,
+        }
+      )
+      worker.on('error', (err) => {
+        app.log.error({ err }, '[BullMQ] Worker error')
+      })
+      worker.on('completed', (job, result) => {
+        app.log.info({ jobId: job.id, result }, '[BullMQ] Worker completed job')
+      })
+      worker.on('failed', (job, err) => {
+        app.log.error({ jobId: job?.id, err }, '[BullMQ] Worker failed job')
+      })
+    } else {
+      app.log.info(`[BullMQ] bullRole=${app.config.bullRole}; worker not started`)
+    }
 
     // 等待就绪，确保连接可用
     await Promise.all([
       syncStarsQueue.waitUntilReady(),
       syncStarsEvents.waitUntilReady(),
-      worker.waitUntilReady(),
+      ...(worker ? [worker.waitUntilReady()] : []),
     ])
+
+    // 注册定时（repeatable）增量任务（按配置），使用固定 jobId 防重复
+    if (isProducer && app.config.syncStarsCron) {
+      await syncStarsQueue.add(
+        SYNC_STARS_JOB,
+        { options: { mode: 'incremental' }, actor: 'cron', note: 'scheduled by cron' },
+        { jobId: 'sync-stars:cron', repeat: { pattern: app.config.syncStarsCron } }
+      )
+      app.log.info(`[BullMQ] repeatable job registered with cron: ${app.config.syncStarsCron}`)
+    }
 
     // 装饰 fastify 实例，方便在 Controller/Service 使用
     app.decorate('queues', {
       syncStars: syncStarsQueue,
     })
-    app.decorate('workers', {
-      syncStars: worker,
-    })
+    if (worker) {
+      app.decorate('workers', { syncStars: worker })
+    }
 
     app.addHook('onClose', async () => {
-      await worker.close()
+      if (worker) await worker.close()
       await syncStarsEvents.close()
       await syncStarsQueue.close()
     })

@@ -62,8 +62,14 @@ export async function handleSyncStarsJob(ctx: Ctx, data: SyncJobData): Promise<S
   const { options } = data
   const perPage = options.perPage ?? ctx.config.syncPerPage ?? 50
   const maxPages = options.maxPages ?? ctx.config.syncMaxPages ?? 0
-  const softDeleteUnstarred =
+  // 模式：full | incremental
+  const isFull = options.mode === 'full'
+  // 软删：full 默认开启（除非显式关闭）；incremental 按配置
+  let softDeleteUnstarred =
     options.softDeleteUnstarred ?? ctx.config.syncSoftDeleteUnstarred ?? false
+  if (options.softDeleteUnstarred === undefined && isFull) {
+    softDeleteUnstarred = true
+  }
 
   const source = SYNC_SOURCE_GITHUB_STARS
   const key = buildGithubStarsKey(ctx.config.githubUsername)
@@ -74,6 +80,9 @@ export async function handleSyncStarsJob(ctx: Ctx, data: SyncJobData): Promise<S
   const state = await getState(ctx, source, key)
   const prevEtag = state?.etag ?? undefined
   const prevCursor = state?.cursor ?? undefined
+  // full 忽略 etag/cursor；incremental 使用
+  const etagForFetch = isFull ? undefined : prevEtag
+  const cursorForStop = isFull ? undefined : prevCursor
 
   // 可视化关键上下文：模式/分页/历史游标与 ETag
   ctx.log.info(
@@ -103,18 +112,61 @@ export async function handleSyncStarsJob(ctx: Ctx, data: SyncJobData): Promise<S
   let reachedEnd = false
   let stoppedByCursor = false
 
+  // 增量模式：先做 1 条的轻量预检，若 304 直接返回
+  if (!isFull && prevEtag) {
+    try {
+      const headModule = await import('./github.client')
+      const head = await headModule.fetchFirstStarPage(octokit, {
+        username: ctx.config.githubUsername,
+        etag: prevEtag,
+      })
+      if (head.notModified) {
+        const finishedAt = new Date()
+        const stats: SyncStats = {
+          scanned: 0,
+          created: 0,
+          updated: 0,
+          unchanged: 0,
+          softDeleted: 0,
+          pages: 0,
+          rateLimitRemaining: head.rateLimitRemaining,
+          startedAt: startedAt.toISOString(),
+          finishedAt: finishedAt.toISOString(),
+          durationMs: finishedAt.getTime() - startedAt.getTime(),
+        }
+        ctx.log.info(
+          { prevEtag, newEtag: head.etag ?? prevEtag, stats },
+          '[sync] precheck not modified — fast exit'
+        )
+        await markSuccess(ctx, source, key, { etag: head.etag ?? prevEtag, stats, finishedAt })
+        return stats
+      }
+      // 记录预检得到的最新 etag/cursor（便于观察）
+      firstPageEtag = head.etag ?? prevEtag
+      const top = head.items?.[0]
+      if (top?.starred_at) firstPageTopCursor = top.starred_at
+      ctx.log.debug(
+        { precheckEtag: firstPageEtag, precheckTopCursor: firstPageTopCursor },
+        '[sync] precheck result'
+      )
+    } catch (e) {
+      ctx.log.warn({ e }, '[sync] precheck failed, continue normal iteration')
+    }
+  }
+
   try {
     for await (const res of iterateStarred(octokit, {
       username: ctx.config.githubUsername,
       perPage,
       maxPages,
-      etag: prevEtag,
+      etag: etagForFetch,
       abortOnNotModified: true,
     })) {
       pages += 1
       ctx.log.debug({ page: pages, items: res.items.length }, '[sync] page fetched')
       if (pages === 1) {
-        if (res.notModified) {
+        // 如果前面做过预检，就不再处理“首页 304 快速返回”的逻辑（预检已覆盖）
+        if (res.notModified && isFull === false && !firstPageEtag /* no precheck result */) {
           // 增量命中 ETag，直接成功返回
           const finishedAt = new Date()
           const stats: SyncStats = {
@@ -136,10 +188,13 @@ export async function handleSyncStarsJob(ctx: Ctx, data: SyncJobData): Promise<S
           await markSuccess(ctx, source, key, { etag: res.etag ?? prevEtag, stats, finishedAt })
           return stats
         }
-        firstPageEtag = res.etag ?? prevEtag
-        const firstItem = res.items?.[0]
-        if (firstItem?.starred_at) firstPageTopCursor = firstItem.starred_at
-        ctx.log.debug({ firstPageEtag, firstPageTopCursor }, '[sync] first page meta captured')
+        // 预检已经拿到 firstPageEtag/TopCursor 的情况下，这里就不重复覆盖和打印
+        if (!firstPageEtag) firstPageEtag = res.etag ?? prevEtag
+        if (!firstPageTopCursor) {
+          const firstItem = res.items?.[0]
+          if (firstItem?.starred_at) firstPageTopCursor = firstItem.starred_at
+          ctx.log.debug({ firstPageEtag, firstPageTopCursor }, '[sync] first page meta captured')
+        }
       }
 
       if (res.secondaryRateLimited) {
@@ -154,13 +209,13 @@ export async function handleSyncStarsJob(ctx: Ctx, data: SyncJobData): Promise<S
       // 入库
       for (const item of res.items) {
         // 若已存在游标，遇到“旧数据”则提前停止（不再向后翻页）
-        if (prevCursor && item.starred_at) {
+        if (cursorForStop && item.starred_at) {
           const itemWhen = new Date(item.starred_at)
-          const prevWhen = new Date(prevCursor)
+          const prevWhen = new Date(cursorForStop)
           if (itemWhen <= prevWhen) {
             stoppedByCursor = true
             ctx.log.info(
-              { prevCursor, hitAt: item.starred_at },
+              { prevCursor: cursorForStop, hitAt: item.starred_at },
               '[sync] cursor reached, stop scanning more pages'
             )
             break

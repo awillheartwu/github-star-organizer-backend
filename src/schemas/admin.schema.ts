@@ -8,3 +8,47 @@ export const SetRoleBodySchema = Type.Object({
 })
 
 export const BasicMessageSchema = Type.Object({ message: Type.String() })
+
+// 手动触发 GitHub stars 同步
+export const SyncStarsBodySchema = Type.Object({
+  mode: Type.Union([Type.Literal('full'), Type.Literal('incremental')], { default: 'incremental' }),
+  perPage: Type.Optional(Type.Number({ minimum: 1, maximum: 100 })),
+  maxPages: Type.Optional(Type.Number({ minimum: 0 })),
+  softDeleteUnstarred: Type.Optional(Type.Boolean()),
+  note: Type.Optional(Type.String()),
+})
+
+export const EnqueueResponseSchema = Type.Object({
+  message: Type.String(),
+  jobId: Type.String(),
+})
+
+// 与全局 AppError 对齐的错误响应形状
+export const ErrorResponseSchema = Type.Object({
+  message: Type.String(),
+  code: Type.Number(),
+  errorType: Type.String(),
+})
+
+// 手动触发冲突的专用错误响应（附带 jobId/state）
+export const ConflictEnqueueErrorSchema = Type.Intersect([
+  ErrorResponseSchema,
+  Type.Object({
+    jobId: Type.Optional(Type.String()),
+    state: Type.Optional(Type.String()),
+  }),
+])
+
+export const SyncStateResponseSchema = Type.Object({
+  id: Type.String(),
+  source: Type.String(),
+  key: Type.String(),
+  cursor: Type.Optional(Type.String()),
+  etag: Type.Optional(Type.String()),
+  lastRunAt: Type.Optional(Type.String()),
+  lastSuccessAt: Type.Optional(Type.String()),
+  lastErrorAt: Type.Optional(Type.String()),
+  lastError: Type.Optional(Type.String()),
+  statsJson: Type.Optional(Type.String()),
+  updatedAt: Type.String(),
+})

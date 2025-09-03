@@ -39,6 +39,43 @@ export function createOctokit(token?: string, requestTimeoutMs?: number) {
   return octokit
 }
 
+// 简单重试：针对网络瞬时错误与 5xx
+function getErrorCode(err: unknown): string | undefined {
+  if (err && typeof err === 'object' && 'code' in err) {
+    const c = (err as { code?: unknown }).code
+    return typeof c === 'string' ? c : undefined
+  }
+  return undefined
+}
+
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  opts?: { retries?: number; baseDelayMs?: number }
+) {
+  const retries = opts?.retries ?? 2
+  const base = opts?.baseDelayMs ?? 500
+  let lastErr: unknown
+  for (let i = 0; i <= retries; i++) {
+    try {
+      return await fn()
+    } catch (err) {
+      lastErr = err
+      const isReqErr = err instanceof RequestError
+      const status = isReqErr ? err.status : undefined
+      const code = getErrorCode(err)
+      const retryableStatus = status && status >= 500
+      const retryableCode =
+        code && ['ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND', 'EAI_AGAIN'].includes(code)
+      if (i < retries && (retryableStatus || retryableCode)) {
+        await new Promise((r) => setTimeout(r, base * Math.pow(2, i)))
+        continue
+      }
+      throw err
+    }
+  }
+  throw lastErr
+}
+
 export async function fetchStarredPage(
   octokit: Octokit,
   params: {
@@ -57,13 +94,15 @@ export async function fetchStarredPage(
   if (etag) headers['If-None-Match'] = etag
 
   try {
-    const res = await octokit.request('GET /users/{username}/starred', {
-      username,
-      per_page: size,
-      page,
-      headers,
-      request: { signal },
-    })
+    const res = await withRetry(() =>
+      octokit.request('GET /users/{username}/starred', {
+        username,
+        per_page: size,
+        page,
+        headers,
+        request: { signal },
+      })
+    )
 
     const remaining = Number(res.headers['x-ratelimit-remaining'] || '0')
     const reset = Number(res.headers['x-ratelimit-reset'] || '0')
@@ -111,6 +150,20 @@ export async function fetchStarredPage(
     }
     throw err
   }
+}
+
+// 轻量预检：仅取第一页 1 条，用于快速命中 304 或拿到顶部 cursor
+export async function fetchFirstStarPage(
+  octokit: Octokit,
+  params: { username: string; etag?: string; signal?: AbortSignal }
+): Promise<FetchStarredResult> {
+  return fetchStarredPage(octokit, {
+    username: params.username,
+    page: 1,
+    perPage: 1,
+    etag: params.etag,
+    signal: params.signal,
+  })
 }
 
 export async function* iterateStarred(
