@@ -106,3 +106,19 @@ export async function listArchivedProjectsService(
     total,
   }
 }
+
+export async function getArchivedProjectByIdService(ctx: Ctx, id: string) {
+  const row = await ctx.prisma.archivedProject.findUnique({
+    where: { id },
+    select: { id: true, githubId: true, reason: true, archivedAt: true, snapshot: true },
+  })
+  if (!row) {
+    throw new AppError(
+      'Archived project not found',
+      HTTP_STATUS.NOT_FOUND.statusCode,
+      ERROR_TYPES.NOT_FOUND,
+      { id }
+    )
+  }
+  return row
+}

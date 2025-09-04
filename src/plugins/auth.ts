@@ -135,6 +135,35 @@ const authPlugin: FastifyPluginAsync = async (app) => {
       // 验证通过后，fastify-jwt 会把 payload 放到 request.user
       // 这里可按需做额外检查（例如 token.type === 'access'）
       // if ((request.user as any)?.type !== 'access') throw app.httpErrors.unauthorized()
+
+      // 即时失效：校验 tokenVersion（ver）
+      const userId = request.user?.sub
+      const tokenVer = request.user?.ver ?? 0
+      if (userId) {
+        const key = `tv:${userId}`
+        let currentVer: number | undefined
+        const cached = await app.redis.get(key).catch(() => null)
+        if (cached != null) {
+          const n = Number(cached)
+          if (Number.isFinite(n)) currentVer = n
+        }
+        if (currentVer === undefined) {
+          const row = await app.prisma.user.findUnique({
+            where: { id: userId },
+            select: { tokenVersion: true },
+          })
+          currentVer = row?.tokenVersion ?? 0
+          void app.redis.set(key, String(currentVer), 'EX', 1800).catch(() => void 0)
+        }
+        if (currentVer !== tokenVer) {
+          throw new AppError(
+            'Access token invalidated',
+            HTTP_STATUS.UNAUTHORIZED.statusCode,
+            ERROR_TYPES.UNAUTHORIZED,
+            { reason: 'tokenVersion_mismatch' }
+          )
+        }
+      }
     } catch (err) {
       // 统一交给错误处理器/或直接返回 401
       throw new AppError(

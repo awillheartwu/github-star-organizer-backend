@@ -77,3 +77,8 @@ export const ArchivedProjectListResponseSchema = Type.Object({
   pageSize: Type.Number(),
   total: Type.Number(),
 })
+
+export const ArchivedProjectDetailResponseSchema = Type.Object({
+  message: Type.String(),
+  data: ArchivedProjectSchema,
+})

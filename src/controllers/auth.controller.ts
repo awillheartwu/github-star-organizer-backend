@@ -44,7 +44,12 @@ export async function login(req: FastifyRequest, reply: FastifyReply) {
     )
   }
 
-  const accessToken = await reply.accessSign({ sub: user.id, role: user.role, type: 'access' })
+  const accessToken = await reply.accessSign({
+    sub: user.id,
+    role: user.role,
+    type: 'access',
+    ver: user.tokenVersion,
+  })
   const jti = authService.genJti()
   const refreshToken = await reply.refreshSign({ sub: user.id, jti, type: 'refresh' })
 
@@ -92,13 +97,13 @@ export async function refresh(req: FastifyRequest, reply: FastifyReply) {
   req.server.setRefreshCookie(reply, newRefresh)
   const fresh = await ctx.prisma.user.findUnique({
     where: { id: record.userId },
-    select: { role: true /* , tokenVersion: true */ },
+    select: { role: true, tokenVersion: true },
   })
   const accessToken = await reply.accessSign({
     sub: record.userId,
     role: fresh!.role,
     type: 'access',
-    // ver: fresh!.tokenVersion,
+    ver: fresh!.tokenVersion,
   })
 
   return reply.send({ message: 'ok', data: { accessToken } })
@@ -147,8 +152,8 @@ export async function changePassword(req: FastifyRequest, reply: FastifyReply) {
 
   const newHash = await authService.hashPassword(newPassword)
   await ctx.prisma.user.update({ where: { id: user.id }, data: { passwordHash: newHash } })
-
   await authService.revokeAllRefreshOfUser(ctx, user.id)
+  await authService.bumpTokenVersion(ctx, user.id)
 
   return reply.send({ message: 'password changed' })
 }

@@ -1,5 +1,6 @@
 // src/routes/admin.router.ts
 import { FastifyInstance } from 'fastify'
+import { Type } from '@sinclair/typebox'
 import { adminController } from '../controllers'
 import {
   AdminTag,
@@ -12,6 +13,7 @@ import {
   SyncStateResponseSchema,
   ArchivedProjectListQuerySchema,
   ArchivedProjectListResponseSchema,
+  ArchivedProjectDetailResponseSchema,
 } from '../schemas/admin.schema'
 
 export default async function adminRoutes(fastify: FastifyInstance) {
@@ -95,5 +97,21 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       },
     },
     adminController.listArchivedProjects
+  )
+
+  // 归档项目详情（ADMIN only，只读）
+  fastify.get(
+    '/admin/archived-projects/:id',
+    {
+      onRequest: [fastify.verifyAccess, fastify.roleGuard('ADMIN')],
+      schema: {
+        tags: [AdminTag],
+        summary: 'Get archived project detail (ADMIN)',
+        params: Type.Object({ id: Type.String({ format: 'uuid' }) }),
+        response: { 200: ArchivedProjectDetailResponseSchema },
+        security: [{ bearerAuth: [] }],
+      },
+    },
+    adminController.getArchivedProjectById
   )
 }

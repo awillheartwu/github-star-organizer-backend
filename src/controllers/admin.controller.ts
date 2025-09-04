@@ -32,3 +32,10 @@ export async function listArchivedProjects(req: FastifyRequest, reply: FastifyRe
   const result = await adminService.listArchivedProjectsService(ctx, { ...query, offset, limit })
   return reply.send({ message: 'ok', ...result })
 }
+
+export async function getArchivedProjectById(req: FastifyRequest, reply: FastifyReply) {
+  const ctx = getCtx(req)
+  const { id } = req.params as { id: string }
+  const row = await adminService.getArchivedProjectByIdService(ctx, id)
+  return reply.send({ message: 'ok', data: row })
+}

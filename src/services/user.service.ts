@@ -17,9 +17,12 @@ export async function setUserRole(ctx: Ctx, userId: string, role: 'USER' | 'ADMI
     where: { userId, revoked: false },
     data: { revoked: true },
   })
-  // 可选：若使用 tokenVersion，顺便 +1，实现 access 立刻失效
-  /* await ctx.prisma.user
-    .update({ where: { id: userId }, data: { tokenVersion: { increment: 1 } } })
-    .catch(() => {}) */
+  // tokenVersion +1，实现 access 立刻失效，并更新 Redis 缓存
+  const updated = await ctx.prisma.user.update({
+    where: { id: userId },
+    data: { tokenVersion: { increment: 1 } },
+    select: { tokenVersion: true },
+  })
+  await ctx.redis.set(`tv:${userId}`, String(updated.tokenVersion), 'EX', 1800).catch(() => void 0)
   return { ok: true }
 }

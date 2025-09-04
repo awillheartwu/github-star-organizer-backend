@@ -31,6 +31,7 @@ export const RefreshTokenRelations = Type.Object(
         role: Type.Union([Type.Literal("USER"), Type.Literal("ADMIN")], {
           additionalProperties: false,
         }),
+        tokenVersion: Type.Integer(),
         createdAt: Type.String({ format: "date-time" }),
         updatedAt: Type.String({ format: "date-time" }),
       },

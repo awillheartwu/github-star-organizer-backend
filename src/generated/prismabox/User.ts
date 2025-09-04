@@ -13,6 +13,7 @@ export const UserPlain = Type.Object(
     role: Type.Union([Type.Literal("USER"), Type.Literal("ADMIN")], {
       additionalProperties: false,
     }),
+    tokenVersion: Type.Integer(),
     createdAt: Type.String({ format: "date-time" }),
     updatedAt: Type.String({ format: "date-time" }),
   },
@@ -64,6 +65,7 @@ export const UserWhere = Type.Partial(
           role: Type.Union([Type.Literal("USER"), Type.Literal("ADMIN")], {
             additionalProperties: false,
           }),
+          tokenVersion: Type.Integer(),
           createdAt: Type.String({ format: "date-time" }),
           updatedAt: Type.String({ format: "date-time" }),
         },
@@ -115,6 +117,7 @@ export const UserWhereUnique = Type.Recursive(
               role: Type.Union([Type.Literal("USER"), Type.Literal("ADMIN")], {
                 additionalProperties: false,
               }),
+              tokenVersion: Type.Integer(),
               createdAt: Type.String({ format: "date-time" }),
               updatedAt: Type.String({ format: "date-time" }),
             },
@@ -135,6 +138,7 @@ export const UserSelect = Type.Partial(
       passwordHash: Type.Boolean(),
       displayName: Type.Boolean(),
       role: Type.Boolean(),
+      tokenVersion: Type.Boolean(),
       createdAt: Type.Boolean(),
       updatedAt: Type.Boolean(),
       refreshTokens: Type.Boolean(),
@@ -168,6 +172,9 @@ export const UserOrderBy = Type.Partial(
         additionalProperties: false,
       }),
       displayName: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
+        additionalProperties: false,
+      }),
+      tokenVersion: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
         additionalProperties: false,
       }),
       createdAt: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {

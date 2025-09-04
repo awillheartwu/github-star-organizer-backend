@@ -24,7 +24,7 @@ export async function sendSyncCompleted(
   const subject = `[GitHub Stars] Sync completed — pages:${stats.pages} scanned:${stats.scanned}`
   const text =
     `Job ${jobId} completed\n\n` +
-    `pages=${stats.pages}\nscanned=${stats.scanned}\ncreated=${stats.created}\nupdated=${stats.updated}\nunchanged=${stats.unchanged}\nsoftDeleted=${stats.softDeleted}\nrateLimitRemaining=${stats.rateLimitRemaining ?? '-'}\n` +
+    `pages=${stats.pages}\nscanned=${stats.scanned}\ncreated=${stats.created}\nupdated=${stats.updated}\nunchanged=${stats.unchanged}\nsoftDeleted=${stats.softDeleted}\narchivedCount=${stats.softDeleted}  # equals softDeleted\nrateLimitRemaining=${stats.rateLimitRemaining ?? '-'}\n` +
     `startedAt=${stats.startedAt ?? ''}\nfinishedAt=${stats.finishedAt ?? ''}\ndurationMs=${stats.durationMs ?? ''}`
 
   const html = renderCompletedHtml(jobId, stats)
@@ -86,6 +86,7 @@ function renderCompletedHtml(jobId: string | number, s: SyncStats) {
       ${tr('updated', s.updated)}
       ${tr('unchanged', s.unchanged)}
       ${tr('softDeleted', s.softDeleted)}
+      ${tr('archivedCount', s.softDeleted)}
       ${tr('rateLimitRemaining', s.rateLimitRemaining ?? '-')} 
       ${tr('startedAt', s.startedAt ?? '')}
       ${tr('finishedAt', s.finishedAt ?? '')}

@@ -42,7 +42,10 @@ export async function verifyPassword(hash: string, plain: string) {
 }
 
 export async function findUserByEmail(ctx: Ctx, email: string) {
-  return ctx.prisma.user.findUnique({ where: { email } })
+  return ctx.prisma.user.findUnique({
+    where: { email },
+    select: { id: true, email: true, passwordHash: true, role: true, tokenVersion: true },
+  })
 }
 export async function createUser(ctx: Ctx, email: string, password: string, displayName?: string) {
   const existed = await ctx.prisma.user.findUnique({ where: { email } })
@@ -135,4 +138,20 @@ export async function revokeAllRefreshOfUser(ctx: Ctx, userId: string) {
 
 export function genJti() {
   return randomUUID()
+}
+
+// tokenVersion helpers
+export async function bumpTokenVersion(ctx: Ctx, userId: string) {
+  const updated = await ctx.prisma.user.update({
+    where: { id: userId },
+    data: { tokenVersion: { increment: 1 } },
+    select: { tokenVersion: true },
+  })
+  // cache to Redis for quick verify
+  await ctx.redis.set(`tv:${userId}`, String(updated.tokenVersion), 'EX', 1800).catch(() => void 0)
+  return updated.tokenVersion
+}
+
+export async function cacheTokenVersion(ctx: Ctx, userId: string, version: number) {
+  await ctx.redis.set(`tv:${userId}`, String(version), 'EX', 1800).catch(() => void 0)
 }

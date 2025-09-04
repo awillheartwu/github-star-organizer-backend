@@ -10,6 +10,7 @@ type UserJwtPayload = {
   sub: string
   role?: 'USER' | 'ADMIN'
   type?: 'access' | 'refresh'
+  ver?: number
   [k: string]: unknown
 }
 
