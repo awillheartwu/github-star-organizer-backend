@@ -26,16 +26,8 @@ const ORDERABLE = new Set<keyof Project>([
   'name',
 ])
 
-// 标量字段清单（只对这些做差异比对）
-const SCALAR_KEYS: Array<keyof CreateProjectBody> = [
-  'name',
-  'fullName',
-  'url',
-  'description',
-  'language',
-  'stars',
-  'forks',
-  'lastCommit',
+// 仅允许用户在业务侧编辑的标量字段（来源字段只读：name/fullName/url/description/language/stars/forks/lastCommit）
+const EDITABLE_SCALAR_KEYS: Array<keyof CreateProjectBody> = [
   'notes',
   'favorite',
   'archived',
@@ -303,9 +295,9 @@ export async function updateProjectService(
       )
     }
 
-    // 2) 标量差异：只更新有变化的字段
+    // 2) 标量差异：只更新允许的字段且确实有变化
     const scalarUpdate: Record<string, unknown> = {}
-    for (const key of SCALAR_KEYS) {
+    for (const key of EDITABLE_SCALAR_KEYS) {
       if (key in body) {
         const incoming = (body as Record<string, unknown>)[key]
         const existing = (current as Record<string, unknown>)[key]

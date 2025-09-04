@@ -82,3 +82,17 @@ export const CreateProjectBodySchema = Type.Object({
   tags: Type.Optional(Type.Array(Tag)), // 可选，关联标签
   videoLinks: Type.Optional(Type.Array(Type.String())), // 可选，关联视频链接
 })
+
+// 更新白名单：仅允许业务可编辑字段（来源字段只读，交由同步任务维护）
+export const UpdateProjectBodySchema = Type.Object(
+  {
+    notes: Type.Optional(Type.String()),
+    favorite: Type.Optional(Type.Boolean()),
+    archived: Type.Optional(Type.Boolean()),
+    pinned: Type.Optional(Type.Boolean()),
+    score: Type.Optional(Type.Integer()),
+    tags: Type.Optional(Type.Array(Tag)),
+    videoLinks: Type.Optional(Type.Array(Type.String())),
+  },
+  { additionalProperties: false }
+)

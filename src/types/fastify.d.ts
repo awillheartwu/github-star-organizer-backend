@@ -22,7 +22,8 @@ declare module 'fastify' {
     queues: {
       syncStars: Queue<SyncJobData, SyncStats>
     }
-    workers: {
+    // 在 bull 角色不是 worker 时不会注册 workers，故设为可选
+    workers?: {
       syncStars: Worker<SyncJobData, SyncStats>
     }
 

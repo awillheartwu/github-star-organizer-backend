@@ -2,8 +2,9 @@ import { FastifyInstance } from 'fastify'
 import {
   ProjectQuerySchema,
   ProjectListResponseSchema,
-  CreateProjectBodySchema,
+  /* CreateProjectBodySchema, */
   BaseProjectResponseSchema,
+  UpdateProjectBodySchema,
 } from '../schemas/project.schema'
 import { Type } from '@sinclair/typebox'
 import { projectController } from '../controllers'
@@ -39,21 +40,22 @@ export default async function projectRoutes(fastify: FastifyInstance) {
     },
     projectController.getProjectById
   )
-  fastify.post(
-    '/projects',
-    {
-      onRequest: [fastify.verifyAccess, fastify.roleGuard('ADMIN')],
-      schema: {
-        description: '创建项目',
-        tags: ['Project'],
-        body: CreateProjectBodySchema,
-        response: { 201: BaseProjectResponseSchema },
-        summary: 'Create a project',
-        security: [{ bearerAuth: [] }],
-      },
-    },
-    projectController.createProject
-  )
+  // 暂不开放创建（由同步产出），保留接口定义以便后续改造成“导入”模式
+  // fastify.post(
+  //   '/projects',
+  //   {
+  //     onRequest: [fastify.verifyAccess, fastify.roleGuard('ADMIN')],
+  //     schema: {
+  //       description: '创建项目',
+  //       tags: ['Project'],
+  //       body: CreateProjectBodySchema,
+  //       response: { 201: BaseProjectResponseSchema },
+  //       summary: 'Create a project',
+  //       security: [{ bearerAuth: [] }],
+  //     },
+  //   },
+  //   projectController.createProject
+  // )
   fastify.put(
     '/projects/:id',
     {
@@ -62,7 +64,7 @@ export default async function projectRoutes(fastify: FastifyInstance) {
         description: '更新项目',
         tags: ['Project'],
         params: Type.Object({ id: Type.String({ format: 'uuid' }) }),
-        body: Type.Partial(CreateProjectBodySchema),
+        body: UpdateProjectBodySchema,
         response: { 200: BaseProjectResponseSchema },
         summary: 'Update a project',
         security: [{ bearerAuth: [] }],
