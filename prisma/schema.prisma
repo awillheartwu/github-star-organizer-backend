@@ -147,12 +147,14 @@ model RefreshToken {
   replacedByTokenId String?
   expiresAt         DateTime
   createdAt         DateTime @default(now())
+  revokedAt         DateTime?
 
   ip        String?
   userAgent String?
 
   @@index([userId])
   @@index([revoked, expiresAt])
+  @@index([revoked, revokedAt])
 }
 
 /// 记录各类同步任务的游标与状态

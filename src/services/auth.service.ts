@@ -114,7 +114,7 @@ export async function rotateRefreshToken(
   await ctx.prisma.$transaction([
     ctx.prisma.refreshToken.update({
       where: { tokenHash: oldHash },
-      data: { revoked: true, replacedByTokenId: newJti },
+      data: { revoked: true, replacedByTokenId: newJti, revokedAt: new Date() },
     }),
     ctx.prisma.refreshToken.create({
       data: { userId, tokenHash: sha256(newToken), jti: newJti, expiresAt, ip, userAgent: ua },
@@ -125,14 +125,14 @@ export async function rotateRefreshToken(
 export async function revokeRefreshByToken(ctx: Ctx, token: string) {
   const hash = sha256(token)
   await ctx.prisma.refreshToken
-    .update({ where: { tokenHash: hash }, data: { revoked: true } })
+    .update({ where: { tokenHash: hash }, data: { revoked: true, revokedAt: new Date() } })
     .catch(() => void 0)
 }
 
 export async function revokeAllRefreshOfUser(ctx: Ctx, userId: string) {
   await ctx.prisma.refreshToken.updateMany({
     where: { userId, revoked: false },
-    data: { revoked: true },
+    data: { revoked: true, revokedAt: new Date() },
   })
 }
 

@@ -33,6 +33,7 @@ export const UserRelations = Type.Object(
           replacedByTokenId: __nullable__(Type.String()),
           expiresAt: Type.String({ format: "date-time" }),
           createdAt: Type.String({ format: "date-time" }),
+          revokedAt: __nullable__(Type.String({ format: "date-time" })),
           ip: __nullable__(Type.String()),
           userAgent: __nullable__(Type.String()),
         },

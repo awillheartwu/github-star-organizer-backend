@@ -92,6 +92,22 @@ const EnvSchema = Type.Object(
     SMTP_PASS: Type.Optional(Type.String()),
     MAIL_FROM: Type.Optional(Type.String()),
     MAIL_TO: Type.Optional(Type.String()),
+
+    // 新版：更细粒度的 RT 清理参数
+    RT_EXPIRED_CLEAN_AFTER_DAYS: Type.Optional(Type.Number({ default: 0 })),
+    RT_REVOKED_RETENTION_DAYS: Type.Optional(Type.Number({ default: 7 })),
+    RT_CLEAN_BATCH: Type.Optional(Type.Number({ default: 1000 })),
+    RT_CLEAN_DRY_RUN: Type.Optional(Type.Boolean({ default: true })),
+
+    // BullMQ 清理参数（可选）
+    BULL_DRY_RUN: Type.Optional(Type.Boolean({ default: true })),
+    BULL_CLEAN_COMPLETED_AFTER_DAYS: Type.Optional(Type.Number({ default: 3 })),
+    BULL_CLEAN_FAILED_AFTER_DAYS: Type.Optional(Type.Number({ default: 30 })),
+    BULL_TRIM_EVENTS: Type.Optional(Type.Number({ default: 1000 })),
+
+    // 维护任务（repeatable job）
+    MAINT_ENABLED: Type.Optional(Type.Boolean({ default: true })),
+    MAINT_CRON: Type.Optional(Type.String({ default: '0 3 * * *' })),
   },
 
   { additionalProperties: false }
@@ -164,6 +180,22 @@ const AppConfigSchema = Type.Object(
     smtpPass: Type.Optional(Type.String()),
     mailFrom: Type.Optional(Type.String()),
     mailTo: Type.Optional(Type.String()),
+
+    // 新增：细粒度 RT 清理（供 service/script 使用）
+    rtExpiredCleanAfterDays: Type.Number(),
+    rtRevokedRetentionDays: Type.Number(),
+    rtCleanBatch: Type.Number(),
+    rtCleanDryRun: Type.Boolean(),
+
+    // BullMQ 清理（供 service/script 使用）
+    bullCleanDryRun: Type.Boolean(),
+    bullCleanCompletedAfterDays: Type.Number(),
+    bullCleanFailedAfterDays: Type.Number(),
+    bullTrimEvents: Type.Number(),
+
+    // 维护任务开关/时间
+    maintEnabled: Type.Boolean(),
+    maintCron: Type.String(),
   },
   { additionalProperties: false }
 )
@@ -221,6 +253,18 @@ export function loadConfig(): AppConfig {
     SMTP_PASS: process.env.SMTP_PASS,
     MAIL_FROM: process.env.MAIL_FROM,
     MAIL_TO: process.env.MAIL_TO,
+    RT_EXPIRED_CLEAN_AFTER_DAYS: process.env.RT_EXPIRED_CLEAN_AFTER_DAYS,
+    RT_REVOKED_RETENTION_DAYS: process.env.RT_REVOKED_RETENTION_DAYS,
+    RT_CLEAN_BATCH: process.env.RT_CLEAN_BATCH,
+    RT_CLEAN_DRY_RUN: process.env.RT_CLEAN_DRY_RUN,
+
+    BULL_DRY_RUN: process.env.BULL_DRY_RUN,
+    BULL_CLEAN_COMPLETED_AFTER_DAYS: process.env.BULL_CLEAN_COMPLETED_AFTER_DAYS,
+    BULL_CLEAN_FAILED_AFTER_DAYS: process.env.BULL_CLEAN_FAILED_AFTER_DAYS,
+    BULL_TRIM_EVENTS: process.env.BULL_TRIM_EVENTS,
+
+    MAINT_ENABLED: process.env.MAINT_ENABLED,
+    MAINT_CRON: process.env.MAINT_CRON,
   }
 
   // Coerce and validate using TypeBox Value tools
@@ -273,6 +317,19 @@ export function loadConfig(): AppConfig {
     smtpPass: coerced.SMTP_PASS,
     mailFrom: coerced.MAIL_FROM,
     mailTo: coerced.MAIL_TO,
+    // Provide hard defaults here to satisfy AppConfigSchema required fields
+    rtExpiredCleanAfterDays: coerced.RT_EXPIRED_CLEAN_AFTER_DAYS ?? 0,
+    rtRevokedRetentionDays: coerced.RT_REVOKED_RETENTION_DAYS ?? 7,
+    rtCleanBatch: coerced.RT_CLEAN_BATCH ?? 1000,
+    rtCleanDryRun: coerced.RT_CLEAN_DRY_RUN ?? true,
+
+    bullCleanDryRun: coerced.BULL_DRY_RUN ?? true,
+    bullCleanCompletedAfterDays: coerced.BULL_CLEAN_COMPLETED_AFTER_DAYS ?? 3,
+    bullCleanFailedAfterDays: coerced.BULL_CLEAN_FAILED_AFTER_DAYS ?? 30,
+    bullTrimEvents: coerced.BULL_TRIM_EVENTS ?? 1000,
+
+    maintEnabled: coerced.MAINT_ENABLED ?? true,
+    maintCron: coerced.MAINT_CRON ?? '0 3 * * *',
   }
 
   // Final assert (defensive) and freeze for immutability

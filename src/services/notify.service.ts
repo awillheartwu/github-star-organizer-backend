@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify'
 import type { SyncStats } from '../types/sync.types'
+import type { AppConfig } from '../config'
 
 function errorMessage(err: unknown): string {
   if (err instanceof Error) return err.message
@@ -39,6 +40,65 @@ export async function sendSyncFailed(app: FastifyInstance, jobId: string | numbe
     .filter(Boolean)
   if (!to.length) return
   const subject = `[GitHub Stars] Sync failed — job:${jobId}`
+  const text = `Job ${jobId} failed\n\n` + errorMessage(err)
+  const html = renderFailedHtml(jobId, errorMessage(err))
+  await app.mailer.send({ to, subject, text, html })
+}
+
+// —— Maintenance (RT/BullMQ cleanup) —— //
+type RtCleanSummary = {
+  dryRun: boolean
+  expiredPreview: number
+  revokedPreview: number
+  expiredDeleted: number
+  revokedDeleted: number
+}
+type BullCleanSummary = {
+  dryRun: boolean
+  queue: string
+  cleanedCompleted: number
+  cleanedFailed: number
+  trimmedEventsTo: number
+  removedRepeatables: number
+}
+
+export async function sendMaintenanceCompleted(
+  app: FastifyInstance,
+  jobId: string | number,
+  rt: RtCleanSummary,
+  bull: BullCleanSummary,
+  cfg: AppConfig
+) {
+  if (!app.config.notifyEmailEnabled) return
+  const to = (app.config.mailTo || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+  if (!to.length) return
+
+  const subject = `[Maintenance] Daily cleanup completed — rt:${rt.expiredDeleted + rt.revokedDeleted} bull:${bull.cleanedCompleted + bull.cleanedFailed}`
+  const text =
+    `Job ${jobId} completed\n\n` +
+    `RT: dryRun=${rt.dryRun} expiredPreview=${rt.expiredPreview} revokedPreview=${rt.revokedPreview} expiredDeleted=${rt.expiredDeleted} revokedDeleted=${rt.revokedDeleted}\n` +
+    `Bull: dryRun=${bull.dryRun} queue=${bull.queue} cleanedCompleted=${bull.cleanedCompleted} cleanedFailed=${bull.cleanedFailed} trimmedEventsTo=${bull.trimmedEventsTo} removedRepeatables=${bull.removedRepeatables}\n` +
+    `Cron=${cfg.maintCron}`
+
+  const html = renderMaintenanceHtml(jobId, rt, bull, cfg)
+  await app.mailer.send({ to, subject, text, html })
+}
+
+export async function sendMaintenanceFailed(
+  app: FastifyInstance,
+  jobId: string | number,
+  err: unknown
+) {
+  if (!app.config.notifyEmailEnabled) return
+  const to = (app.config.mailTo || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+  if (!to.length) return
+  const subject = `[Maintenance] Daily cleanup failed — job:${jobId}`
   const text = `Job ${jobId} failed\n\n` + errorMessage(err)
   const html = renderFailedHtml(jobId, errorMessage(err))
   await app.mailer.send({ to, subject, text, html })
@@ -95,6 +155,40 @@ function renderCompletedHtml(jobId: string | number, s: SyncStats) {
     <p class="muted">GitHub Star Organizer · This is an automated message.</p>
   </div>`
   return renderShell(body, 'Sync completed')
+}
+
+function renderMaintenanceHtml(
+  jobId: string | number,
+  rt: RtCleanSummary,
+  bull: BullCleanSummary,
+  cfg: AppConfig
+) {
+  const body = `
+  <div class="header">Maintenance Completed <span class="ok">• success</span></div>
+  <div class="content">
+    <p>Job <code>${escapeHtml(String(jobId))}</code> completed. Cron <code>${escapeHtml(
+      cfg.maintCron
+    )}</code></p>
+    <h3>RefreshToken</h3>
+    <table class="kv">
+      ${tr('dryRun', rt.dryRun)}
+      ${tr('expiredPreview', rt.expiredPreview)}
+      ${tr('revokedPreview', rt.revokedPreview)}
+      ${tr('expiredDeleted', rt.expiredDeleted)}
+      ${tr('revokedDeleted', rt.revokedDeleted)}
+    </table>
+    <h3 style="margin-top:16px">BullMQ</h3>
+    <table class="kv">
+      ${tr('dryRun', bull.dryRun)}
+      ${tr('queue', bull.queue)}
+      ${tr('cleanedCompleted', bull.cleanedCompleted)}
+      ${tr('cleanedFailed', bull.cleanedFailed)}
+      ${tr('trimmedEventsTo', bull.trimmedEventsTo)}
+      ${tr('removedRepeatables', bull.removedRepeatables)}
+    </table>
+    <p class="muted">GitHub Star Organizer · Automated maintenance report.</p>
+  </div>`
+  return renderShell(body, 'Daily Maintenance')
 }
 
 function renderFailedHtml(jobId: string | number, message: string) {

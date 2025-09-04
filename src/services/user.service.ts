@@ -15,7 +15,7 @@ export async function setUserRole(ctx: Ctx, userId: string, role: 'USER' | 'ADMI
   // 可选：立刻让所有会话失效（更安全）
   await ctx.prisma.refreshToken.updateMany({
     where: { userId, revoked: false },
-    data: { revoked: true },
+    data: { revoked: true, revokedAt: new Date() },
   })
   // tokenVersion +1，实现 access 立刻失效，并更新 Redis 缓存
   const updated = await ctx.prisma.user.update({

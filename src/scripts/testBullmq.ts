@@ -1,21 +1,36 @@
 import Fastify from 'fastify'
 import configPlugin from '../plugins/config'
 import redisPlugin from '../plugins/redis'
+import prismaPlugin from '../plugins/prisma'
+import mailerPlugin from '../plugins/mailer'
 import bullmqPlugin from '../plugins/bullmq'
 import { QueueEvents } from 'bullmq'
-import { SYNC_STARS_JOB, SYNC_STARS_QUEUE } from '../constants/queueNames'
+import {
+  SYNC_STARS_JOB,
+  SYNC_STARS_QUEUE,
+  MAINTENANCE_JOB,
+  MAINTENANCE_QUEUE,
+} from '../constants/queueNames'
 import crypto from 'node:crypto'
 
 async function main() {
   const app = Fastify({ logger: { level: 'info' } })
 
-  // 仅注册 BullMQ 所需的基础插件
+  // 注册 BullMQ 运行所需的基础插件（包含 Prisma 和 Mailer，供 worker 使用）
   await app.register(configPlugin)
   await app.register(redisPlugin)
+  await app.register(prismaPlugin)
+  await app.register(mailerPlugin)
   await app.register(bullmqPlugin)
 
   await app.ready()
   app.log.info('BullMQ test bootstrap ready')
+
+  // Simple args parser: node script [sync] [maint]
+  const argv = process.argv.slice(2)
+  console.log('Args:', argv)
+  const runSync = argv.length === 0 || argv.includes('sync')
+  const runMaint = argv.length === 0 || argv.includes('maint')
 
   // 打印运行角色与已注册 repeatable 任务
   app.log.info({ bullRole: app.config.bullRole }, 'Bull role from config')
@@ -26,8 +41,8 @@ async function main() {
     app.log.warn({ e }, 'Failed to fetch repeatable jobs')
   }
 
-  // 为等待完成创建一个临时 QueueEvents（与插件中的事件隔离）
-  const events = new QueueEvents(SYNC_STARS_QUEUE, {
+  // 为等待完成创建临时 QueueEvents（与插件中的事件隔离）
+  const syncEvents = new QueueEvents(SYNC_STARS_QUEUE, {
     connection: {
       host: app.config.redisHost,
       port: app.config.redisPort,
@@ -37,62 +52,81 @@ async function main() {
     },
     prefix: app.config.bullPrefix,
   })
-  await events.waitUntilReady()
+  await syncEvents.waitUntilReady()
 
-  // 入队一个测试任务
-  // 生成基于 options 的手动 jobId（与 admin.service 保持一致的序列化规则）
-  const opts = { mode: 'incremental' as const }
-  const optsHash = crypto
-    .createHash('sha1')
-    .update(
-      JSON.stringify({ mode: opts.mode, perPage: null, maxPages: null, softDeleteUnstarred: null })
+  const maintEvents = new QueueEvents(MAINTENANCE_QUEUE, {
+    connection: {
+      host: app.config.redisHost,
+      port: app.config.redisPort,
+      password: app.config.redisPassword,
+      maxRetriesPerRequest: null as unknown as number | null,
+      enableReadyCheck: true,
+    },
+    prefix: app.config.bullPrefix,
+  })
+  await maintEvents.waitUntilReady()
+
+  // 入队一个测试任务（同步）
+  if (runSync) {
+    // 生成基于 options 的手动 jobId（与 admin.service 保持一致的序列化规则）
+    const opts = { mode: 'incremental' as const }
+    const optsHash = crypto
+      .createHash('sha1')
+      .update(
+        JSON.stringify({
+          mode: opts.mode,
+          perPage: null,
+          maxPages: null,
+          softDeleteUnstarred: null,
+        })
+      )
+      .digest('hex')
+      .slice(0, 8)
+    const manualJobId = `sync-stars:manual:${optsHash}`
+
+    const job = await app.queues.syncStars.add(
+      SYNC_STARS_JOB,
+      { options: opts, actor: 'manual', note: 'bullmq quick test' },
+      { removeOnComplete: true, jobId: manualJobId }
     )
-    .digest('hex')
-    .slice(0, 8)
-  const manualJobId = `sync-stars:manual:${optsHash}`
-
-  const job = await app.queues.syncStars.add(
-    SYNC_STARS_JOB,
-    { options: opts, actor: 'manual', note: 'bullmq quick test' },
-    { removeOnComplete: true, jobId: manualJobId }
-  )
-  const state1 = await job.getState().catch(() => 'unknown')
-  app.log.info(
-    { id: job.id, name: job.name, jobId: manualJobId, state: state1 },
-    'Enqueued test job'
-  )
-
-  // 再次尝试入队相同参数：BullMQ 语义为“幂等返回同一 Job”或在已完成后新建
-  const dup = await app.queues.syncStars.add(
-    SYNC_STARS_JOB,
-    { options: opts, actor: 'manual', note: 'duplicate test' },
-    { removeOnComplete: true, jobId: manualJobId }
-  )
-  const stateDup = await dup.getState().catch(() => 'unknown')
-  if (dup.id === job.id) {
+    const state1 = await job.getState().catch(() => 'unknown')
     app.log.info(
-      { id: dup.id, state: stateDup },
-      'Duplicate enqueue deduped to same job (expected)'
+      { id: job.id, name: job.name, jobId: manualJobId, state: state1 },
+      'Enqueued test job'
     )
-  } else if (state1 === 'completed' || state1 === 'failed') {
-    app.log.info(
-      { firstId: job.id, secondId: dup.id, firstState: state1, secondState: stateDup },
-      'First job already finished; new job created (expected)'
-    )
-  } else {
-    app.log.warn(
-      { firstId: job.id, secondId: dup.id, firstState: state1, secondState: stateDup },
-      'Duplicate enqueue created a different job while first still running (check dedup logic)'
-    )
-  }
 
-  try {
-    const result = await job.waitUntilFinished(events, 30_000)
-    app.log.info({ result }, 'Job completed')
-  } catch (err) {
-    app.log.error({ err }, 'Job failed or timed out')
-  } finally {
-    // 追加：构造一个失败用例（使用未知的 job name 触发 worker 抛错 → 失败邮件）
+    // 再次尝试入队相同参数：BullMQ 语义为“幂等返回同一 Job”或在已完成后新建
+    const dup = await app.queues.syncStars.add(
+      SYNC_STARS_JOB,
+      { options: opts, actor: 'manual', note: 'duplicate test' },
+      { removeOnComplete: true, jobId: manualJobId }
+    )
+    const stateDup = await dup.getState().catch(() => 'unknown')
+    if (dup.id === job.id) {
+      app.log.info(
+        { id: dup.id, state: stateDup },
+        'Duplicate enqueue deduped to same job (expected)'
+      )
+    } else if (state1 === 'completed' || state1 === 'failed') {
+      app.log.info(
+        { firstId: job.id, secondId: dup.id, firstState: state1, secondState: stateDup },
+        'First job already finished; new job created (expected)'
+      )
+    } else {
+      app.log.warn(
+        { firstId: job.id, secondId: dup.id, firstState: state1, secondState: stateDup },
+        'Duplicate enqueue created a different job while first still running (check dedup logic)'
+      )
+    }
+
+    try {
+      const result = await job.waitUntilFinished(syncEvents, 30_000)
+      app.log.info({ result }, 'Job completed')
+    } catch (err) {
+      app.log.error({ err }, 'Job failed or timed out')
+    }
+
+    // 失败用例
     try {
       const failJob = await app.queues.syncStars.add(
         'sync-stars-invalid',
@@ -100,7 +134,7 @@ async function main() {
         { removeOnComplete: true, removeOnFail: true, jobId: `${manualJobId}:fail` }
       )
       try {
-        await failJob.waitUntilFinished(events, 10_000)
+        await failJob.waitUntilFinished(syncEvents, 10_000)
         app.log.warn({ id: failJob.id }, 'Expected failure but job completed')
       } catch (e) {
         console.log('Failure job errored as expected:', e)
@@ -112,10 +146,42 @@ async function main() {
     } catch (e) {
       app.log.warn({ e }, 'Enqueue fail-case job failed')
     }
-
-    await events.close()
-    await app.close()
   }
+
+  // 入队维护任务
+  if (runMaint) {
+    try {
+      const maintJob = await app.queues.maintenance.add(
+        MAINTENANCE_JOB,
+        { actor: 'manual', note: 'maintenance quick test' },
+        { attempts: 1, removeOnComplete: true, jobId: `maintenance:manual:${Date.now()}` }
+      )
+      app.log.info({ id: maintJob.id }, 'Maintenance job enqueued')
+
+      // Periodically report job state while waiting
+      const interval = setInterval(async () => {
+        try {
+          const state = await maintJob.getState()
+          app.log.info({ id: maintJob.id, state }, 'Maintenance job state')
+        } catch (e) {
+          app.log.warn({ e }, 'Poll maintenance state failed')
+        }
+      }, 5000)
+
+      try {
+        const maintRes = await maintJob.waitUntilFinished(maintEvents, 180_000)
+        app.log.info({ maintRes }, 'Maintenance job completed')
+      } finally {
+        clearInterval(interval)
+      }
+    } catch (e) {
+      app.log.error({ e }, 'Maintenance job failed or timed out')
+    }
+  }
+
+  await syncEvents.close()
+  await maintEvents.close()
+  await app.close()
 }
 
 main().catch((err) => {

@@ -1,11 +1,17 @@
 // src/plugins/bullmq.ts
 import fp from 'fastify-plugin'
 import { Queue, Worker, QueueEvents } from 'bullmq'
-import { SYNC_STARS_JOB, SYNC_STARS_QUEUE } from '../constants/queueNames'
+import {
+  SYNC_STARS_JOB,
+  SYNC_STARS_QUEUE,
+  MAINTENANCE_JOB,
+  MAINTENANCE_QUEUE,
+} from '../constants/queueNames'
 import type { SyncJobData, SyncStats } from '../types/sync.types'
 import type { Ctx } from '../helpers/context.helper'
 import { handleSyncStarsJob } from '../services/sync/github/githubStar.service'
 import * as notify from '../services/notify.service'
+import { cleanupRefreshTokensService, cleanupBullmqService } from '../services/maintenance.service'
 
 export default fp(
   async (app) => {
@@ -36,6 +42,13 @@ export default fp(
       },
     })
 
+    // 维护队列（用于每日清理）
+    const maintenanceQueue = new Queue(MAINTENANCE_QUEUE, {
+      connection,
+      prefix: app.config.bullPrefix,
+      defaultJobOptions: { removeOnComplete: 100, removeOnFail: 500 },
+    })
+
     // 队列事件（可用于日志/监控）
     const syncStarsEvents = new QueueEvents(SYNC_STARS_QUEUE, {
       connection,
@@ -53,6 +66,7 @@ export default fp(
 
     // 可选启动 Worker（按角色）
     let worker: Worker<SyncJobData, SyncStats> | undefined
+    let maintWorker: Worker | undefined
     if (isWorker) {
       worker = new Worker<SyncJobData, SyncStats>(
         SYNC_STARS_QUEUE,
@@ -62,7 +76,12 @@ export default fp(
             throw new Error(`Unknown job name: ${job.name}`)
           }
 
-          const ctx: Ctx = { prisma: app.prisma, log: app.log, config: app.config }
+          const ctx: Ctx = {
+            prisma: app.prisma,
+            log: app.log,
+            config: app.config,
+            redis: app.redis,
+          }
           const stats = await handleSyncStarsJob(ctx, job.data)
           return stats
         },
@@ -86,9 +105,67 @@ export default fp(
       worker.on('failed', async (job, err) => {
         app.log.error({ jobId: job?.id, err }, '[BullMQ] Worker failed job')
         try {
-          if (job?.id) await notify.sendSyncFailed(app, job.id, err)
+          // 仅在“最终失败”时发送邮件，避免重试阶段多封通知
+          const attemptsMade = job?.attemptsMade ?? 0
+          const maxAttempts =
+            (job?.opts?.attempts as number | undefined) ?? app.config.syncJobAttempts ?? 1
+          const isFinalFailure = attemptsMade >= maxAttempts
+          if (isFinalFailure && job?.id) {
+            await notify.sendSyncFailed(app, job.id, err)
+          } else {
+            app.log.debug({ attemptsMade, maxAttempts }, '[BullMQ] skip fail mail (will retry)')
+          }
         } catch (e) {
           app.log.warn({ e }, '[BullMQ] notify failed mail failed')
+        }
+      })
+
+      // 维护 worker（并发 1）
+      maintWorker = new Worker(
+        MAINTENANCE_QUEUE,
+        async (job) => {
+          if (job.name !== MAINTENANCE_JOB) throw new Error(`Unknown job name: ${job.name}`)
+          const ctx: Ctx = {
+            prisma: app.prisma,
+            log: app.log,
+            config: app.config,
+            redis: app.redis,
+          }
+          app.log.info('[maintenance] daily cleanup start')
+          const r1 = await cleanupRefreshTokensService(ctx, { useLock: true })
+          const r2 = await cleanupBullmqService(ctx, { useLock: true })
+          app.log.info({ r1, r2 }, '[maintenance] daily cleanup done')
+          // fire-and-forget 邮件避免阻塞完成事件
+          ;(async () => {
+            try {
+              await notify.sendMaintenanceCompleted(
+                app,
+                job.id!,
+                r1,
+                {
+                  dryRun: app.config.bullCleanDryRun ?? true,
+                  queue: SYNC_STARS_QUEUE,
+                  cleanedCompleted: 0,
+                  cleanedFailed: 0,
+                  trimmedEventsTo: app.config.bullTrimEvents ?? 1000,
+                  removedRepeatables: 0,
+                },
+                app.config
+              )
+            } catch (e) {
+              app.log.warn({ e }, '[maintenance] notify mail failed')
+            }
+          })()
+          return { r1, r2 }
+        },
+        { connection, prefix: app.config.bullPrefix, concurrency: 1 }
+      )
+      maintWorker.on('error', (err) => app.log.error({ err }, '[BullMQ] Maint worker error'))
+      maintWorker.on('failed', async (job, err) => {
+        try {
+          await notify.sendMaintenanceFailed(app, job?.id || 'maintenance', err)
+        } catch (e) {
+          app.log.warn({ e }, '[maintenance] notify fail mail failed')
         }
       })
     } else {
@@ -100,6 +177,7 @@ export default fp(
       syncStarsQueue.waitUntilReady(),
       syncStarsEvents.waitUntilReady(),
       ...(worker ? [worker.waitUntilReady()] : []),
+      ...(maintWorker ? [maintWorker.waitUntilReady()] : []),
     ])
 
     // 注册定时（repeatable）增量任务（按配置），使用固定 jobId 防重复
@@ -112,19 +190,36 @@ export default fp(
       app.log.info(`[BullMQ] repeatable job registered with cron: ${app.config.syncStarsCron}`)
     }
 
+    // 注册维护任务（可配置开关）
+    if (isProducer && app.config.maintEnabled) {
+      await maintenanceQueue.add(
+        MAINTENANCE_JOB,
+        { actor: 'cron' },
+        { jobId: 'maintenance:daily', repeat: { pattern: app.config.maintCron } }
+      )
+      app.log.info(`[BullMQ] maintenance job registered with cron: ${app.config.maintCron}`)
+    }
+
     // 装饰 fastify 实例，方便在 Controller/Service 使用
     app.decorate('queues', {
       syncStars: syncStarsQueue,
+      maintenance: maintenanceQueue,
     })
-    if (worker) {
-      app.decorate('workers', { syncStars: worker })
+    if (worker || maintWorker) {
+      app.decorate('workers', {
+        syncStars: worker!,
+        maintenance: maintWorker!,
+      })
     }
 
     app.addHook('onClose', async () => {
       if (worker) await worker.close()
+      if (maintWorker) await maintWorker.close()
       await syncStarsEvents.close()
       await syncStarsQueue.close()
+      await maintenanceQueue.close()
     })
   },
-  { name: 'bullmq', dependencies: ['redis', 'config'] }
+  // 依赖 prisma/mailer，确保 worker 中可用 app.prisma 与 app.mailer（通知）
+  { name: 'bullmq', dependencies: ['redis', 'config', 'prisma', 'mailer'] }
 )

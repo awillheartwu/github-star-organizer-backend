@@ -14,6 +14,7 @@ export const RefreshTokenPlain = Type.Object(
     replacedByTokenId: __nullable__(Type.String()),
     expiresAt: Type.String({ format: "date-time" }),
     createdAt: Type.String({ format: "date-time" }),
+    revokedAt: __nullable__(Type.String({ format: "date-time" })),
     ip: __nullable__(Type.String()),
     userAgent: __nullable__(Type.String()),
   },
@@ -63,6 +64,7 @@ export const RefreshTokenWhere = Type.Partial(
           replacedByTokenId: Type.String(),
           expiresAt: Type.String({ format: "date-time" }),
           createdAt: Type.String({ format: "date-time" }),
+          revokedAt: Type.String({ format: "date-time" }),
           ip: Type.String(),
           userAgent: Type.String(),
         },
@@ -116,6 +118,7 @@ export const RefreshTokenWhereUnique = Type.Recursive(
               replacedByTokenId: Type.String(),
               expiresAt: Type.String({ format: "date-time" }),
               createdAt: Type.String({ format: "date-time" }),
+              revokedAt: Type.String({ format: "date-time" }),
               ip: Type.String(),
               userAgent: Type.String(),
             },
@@ -140,6 +143,7 @@ export const RefreshTokenSelect = Type.Partial(
       replacedByTokenId: Type.Boolean(),
       expiresAt: Type.Boolean(),
       createdAt: Type.Boolean(),
+      revokedAt: Type.Boolean(),
       ip: Type.Boolean(),
       userAgent: Type.Boolean(),
       _count: Type.Boolean(),
@@ -181,6 +185,9 @@ export const RefreshTokenOrderBy = Type.Partial(
         additionalProperties: false,
       }),
       createdAt: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
+        additionalProperties: false,
+      }),
+      revokedAt: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
         additionalProperties: false,
       }),
       ip: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {

@@ -22,10 +22,12 @@ declare module 'fastify' {
     // BullMQ 队列与 worker
     queues: {
       syncStars: Queue<SyncJobData, SyncStats>
+      maintenance?: Queue
     }
     // 在 bull 角色不是 worker 时不会注册 workers，故设为可选
     workers?: {
       syncStars: Worker<SyncJobData, SyncStats>
+      maintenance?: Worker
     }
 
     // 鉴权：路由前置校验 Access Token
