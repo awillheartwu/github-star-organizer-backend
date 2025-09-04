@@ -1,6 +1,7 @@
 import type { Ctx } from '../../../helpers/context.helper'
 import type { SyncJobData, SyncStats } from '../../../types/sync.types'
 import { createOctokit, iterateStarred, type GitHubStarredItem } from './github.client'
+import { archiveAndDeleteProjectById } from '../../project.service'
 import {
   SYNC_SOURCE_GITHUB_STARS,
   buildGithubStarsKey,
@@ -277,18 +278,22 @@ export async function handleSyncStarsJob(ctx: Ctx, data: SyncJobData): Promise<S
 
     // 可选：软删除不在本次结果中的项目（仅在全量且抓到末页时）
     let softDeleted = 0
-    // 仅在真正遍历到尾页（非游标提前停止）时进行软删除
-    if (
-      softDeleteUnstarred &&
-      (maxPages === 0 || reachedEnd) &&
-      !stoppedByCursor &&
-      seenIds.length > 0
-    ) {
-      const result = await ctx.prisma.project.updateMany({
-        where: { archived: false, githubId: { notIn: seenIds } },
-        data: { archived: true, deletedAt: new Date() },
+    // 仅在真正遍历到尾页（非游标提前停止）时进行软删除（改为：归档后删除）
+    if (softDeleteUnstarred && (maxPages === 0 || reachedEnd) && !stoppedByCursor) {
+      // 找到“本轮未出现”的活跃项目
+      const toArchive = await ctx.prisma.project.findMany({
+        where: seenIds.length > 0 ? { githubId: { notIn: seenIds } } : {},
+        select: { id: true },
       })
-      softDeleted = result.count
+      for (const p of toArchive) {
+        try {
+          await archiveAndDeleteProjectById(ctx, p.id, 'unstarred')
+          softDeleted += 1
+        } catch (e) {
+          // 单条失败不中断同步，记录日志
+          ctx.log.warn({ e, id: p.id }, '[sync] archive-and-delete failed')
+        }
+      }
     }
 
     const finishedAt = new Date()

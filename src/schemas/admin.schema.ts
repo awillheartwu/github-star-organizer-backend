@@ -52,3 +52,28 @@ export const SyncStateResponseSchema = Type.Object({
   statsJson: Type.Optional(Type.String()),
   updatedAt: Type.String(),
 })
+
+// —— 归档项目（只读） —— //
+export const ArchivedReasonSchema = Type.Union([Type.Literal('manual'), Type.Literal('unstarred')])
+
+export const ArchivedProjectSchema = Type.Object({
+  id: Type.String(),
+  githubId: Type.Optional(Type.Integer()),
+  reason: ArchivedReasonSchema,
+  archivedAt: Type.String(),
+  snapshot: Type.Unknown(),
+})
+
+export const ArchivedProjectListQuerySchema = Type.Object({
+  page: Type.Optional(Type.Integer({ minimum: 1 })),
+  pageSize: Type.Optional(Type.Integer({ minimum: 1, maximum: 100 })),
+  reason: Type.Optional(ArchivedReasonSchema),
+})
+
+export const ArchivedProjectListResponseSchema = Type.Object({
+  message: Type.String(),
+  data: Type.Array(ArchivedProjectSchema),
+  page: Type.Number(),
+  pageSize: Type.Number(),
+  total: Type.Number(),
+})

@@ -3,6 +3,7 @@ import { FastifyReply, FastifyRequest } from 'fastify'
 import { getCtx } from '../helpers/context.helper'
 import * as userService from '../services/user.service'
 import * as adminService from '../services/admin.service'
+import { getPagination } from '../helpers/pagination.helper'
 
 export async function setRole(req: FastifyRequest, reply: FastifyReply) {
   const ctx = getCtx(req)
@@ -22,4 +23,12 @@ export async function getSyncStateAdmin(req: FastifyRequest, reply: FastifyReply
   const ctx = getCtx(req)
   const summary = await adminService.getSyncStateSummaryService(ctx)
   return reply.send(summary)
+}
+
+export async function listArchivedProjects(req: FastifyRequest, reply: FastifyReply) {
+  const ctx = getCtx(req)
+  const { offset, limit } = getPagination(req.query)
+  const query = req.query as { page?: number; pageSize?: number; reason?: 'manual' | 'unstarred' }
+  const result = await adminService.listArchivedProjectsService(ctx, { ...query, offset, limit })
+  return reply.send({ message: 'ok', ...result })
 }

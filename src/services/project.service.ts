@@ -402,32 +402,49 @@ export async function updateProjectService(
 }
 
 export async function deleteProjectService(ctx: Ctx, id: string) {
+  await archiveAndDeleteProjectById(ctx, id, 'manual')
+}
+
+// 归档并删除 Project（统一给手动删除与同步软删调用）
+export async function archiveAndDeleteProjectById(
+  ctx: Ctx,
+  id: string,
+  reason: 'manual' | 'unstarred'
+) {
   await ctx.prisma.$transaction(async (tx) => {
-    // 1) 确认存在
-    const existing = await tx.project.findUnique({ where: { id } })
-    if (!existing) {
+    // 查完整实体+关系，转换为扁平快照
+    const current = await tx.project.findUnique({
+      where: { id },
+      include: {
+        tags: { include: { tag: true } },
+        videoLinks: { select: { id: true, url: true } },
+      },
+    })
+    if (!current) {
       throw new AppError(
-        `Project not found or archived: ${id}`,
+        `Project not found: ${id}`,
         HTTP_STATUS.NOT_FOUND.statusCode,
         ERROR_TYPES.NOT_FOUND,
         { id }
       )
     }
 
-    // 2) 删除关联数据（ProjectTag, VideoLink）
-    await Promise.all([
-      tx.projectTag.deleteMany({ where: { projectId: id } }),
-      tx.videoLink.updateMany({
-        where: { projectId: id, archived: false },
-        data: { archived: true, deletedAt: new Date() },
-      }),
-    ])
+    const snapshot = toProjectDto(current as unknown as ProjectWithRelations)
 
-    // 3) 删除 Project
-    await tx.project.update({
-      where: { id },
-      data: { archived: true, deletedAt: new Date() },
+    // 归档表记录（允许同一 githubId 多次归档）
+    await tx.archivedProject.create({
+      data: {
+        githubId: current.githubId,
+        originalProjectId: current.id,
+        reason: reason as 'manual' | 'unstarred',
+        snapshot: snapshot as unknown as object,
+        archivedAt: new Date(),
+      },
     })
-    ctx.log.debug({ id }, 'project archived')
+
+    // 删除关联与主体（选择物理删除，保持活跃表干净）
+    await tx.projectTag.deleteMany({ where: { projectId: id } })
+    await tx.videoLink.deleteMany({ where: { projectId: id } })
+    await tx.project.delete({ where: { id } })
   })
 }

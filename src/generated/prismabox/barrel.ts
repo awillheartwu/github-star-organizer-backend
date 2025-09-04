@@ -1,3 +1,4 @@
+export * from "./ArchivedReason";
 export * from "./UserRole";
 export * from "./Project";
 export * from "./Tag";
@@ -6,5 +7,6 @@ export * from "./VideoLink";
 export * from "./User";
 export * from "./RefreshToken";
 export * from "./SyncState";
+export * from "./ArchivedProject";
 export * from "./__nullable__";
 export * from "./__transformDate__";

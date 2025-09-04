@@ -17,6 +17,22 @@ export async function getProjects(
 ) {
   // 获取所有项目
   const ctx = getCtx(req)
+  // 额外防御性校验：使用 fastify-sensible 的 assert 做区间检查
+  const { starsMin, starsMax, forksMin, forksMax } = req.query
+  if (starsMin !== undefined && starsMax !== undefined) {
+    req.server.assert(
+      Number(starsMax) >= Number(starsMin),
+      400,
+      'starsMax must be greater than or equal to starsMin'
+    )
+  }
+  if (forksMin !== undefined && forksMax !== undefined) {
+    req.server.assert(
+      Number(forksMax) >= Number(forksMin),
+      400,
+      'forksMax must be greater than or equal to forksMin'
+    )
+  }
   const { page, pageSize, offset, limit } = getPagination(req.query)
   const { data, total } = await projectService.getProjectsService(ctx, {
     ...req.query,

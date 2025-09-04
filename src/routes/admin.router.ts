@@ -10,6 +10,8 @@ import {
   ErrorResponseSchema,
   ConflictEnqueueErrorSchema,
   SyncStateResponseSchema,
+  ArchivedProjectListQuerySchema,
+  ArchivedProjectListResponseSchema,
 } from '../schemas/admin.schema'
 
 export default async function adminRoutes(fastify: FastifyInstance) {
@@ -76,5 +78,22 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       },
     },
     adminController.getSyncStateAdmin
+  )
+
+  // 归档项目列表（ADMIN only，只读）
+  fastify.get(
+    '/admin/archived-projects',
+    {
+      onRequest: [fastify.verifyAccess, fastify.roleGuard('ADMIN')],
+      schema: {
+        tags: [AdminTag],
+        summary: 'List archived projects (ADMIN)',
+        description: '只读归档项目列表',
+        querystring: ArchivedProjectListQuerySchema,
+        response: { 200: ArchivedProjectListResponseSchema },
+        security: [{ bearerAuth: [] }],
+      },
+    },
+    adminController.listArchivedProjects
   )
 }

@@ -21,6 +21,12 @@ datasource db {
   url      = "file:./dev.db"
 }
 
+/// 归档原因
+enum ArchivedReason {
+  manual     // 手动删除
+  unstarred  // 同步检测到已取消 star
+}
+
 model Project {
   id          String    @id @default(uuid()) // 主键，UUID
   githubId    Int       @unique // GitHub 项目的唯一 ID（来自 GitHub API）
@@ -181,4 +187,18 @@ model SyncState {
   @@unique([source, key])  // 一个来源+键只保留一条状态
   @@index([source])
   @@index([updatedAt])
+}
+
+/// 归档的 Project 快照（允许同一 githubId 多次归档）
+model ArchivedProject {
+  id                String          @id @default(uuid())
+  githubId          Int?
+  originalProjectId String?
+  reason            ArchivedReason
+  snapshot          Json
+  archivedAt        DateTime        @default(now())
+
+  @@index([githubId])
+  @@index([archivedAt])
+  @@index([reason])
 }

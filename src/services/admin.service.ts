@@ -77,3 +77,32 @@ export async function getSyncStateSummaryService(ctx: Ctx) {
     updatedAt: state.updatedAt.toISOString(),
   }
 }
+
+// —— 归档只读列表 —— //
+export async function listArchivedProjectsService(
+  ctx: Ctx,
+  query: { page?: number; pageSize?: number; reason?: 'manual' | 'unstarred' } & {
+    offset: number
+    limit: number
+  }
+) {
+  const where: Record<string, unknown> = {}
+  if (query.reason) where.reason = query.reason
+
+  const [rows, total] = await Promise.all([
+    ctx.prisma.archivedProject.findMany({
+      skip: query.offset,
+      take: query.limit,
+      where,
+      orderBy: { archivedAt: 'desc' },
+      select: { id: true, githubId: true, reason: true, archivedAt: true, snapshot: true },
+    }),
+    ctx.prisma.archivedProject.count({ where }),
+  ])
+  return {
+    data: rows,
+    page: Math.floor(query.offset / Math.max(1, query.limit)) + 1,
+    pageSize: query.limit,
+    total,
+  }
+}
