@@ -2,7 +2,7 @@ import { FastifyInstance } from 'fastify'
 import {
   ProjectQuerySchema,
   ProjectListResponseSchema,
-  /* CreateProjectBodySchema, */
+  CreateProjectBodySchema,
   BaseProjectResponseSchema,
   UpdateProjectBodySchema,
 } from '../schemas/project.schema'
@@ -40,22 +40,22 @@ export default async function projectRoutes(fastify: FastifyInstance) {
     },
     projectController.getProjectById
   )
-  // 暂不开放创建（由同步产出），保留接口定义以便后续改造成“导入”模式
-  // fastify.post(
-  //   '/projects',
-  //   {
-  //     onRequest: [fastify.verifyAccess, fastify.roleGuard('ADMIN')],
-  //     schema: {
-  //       description: '创建项目',
-  //       tags: ['Project'],
-  //       body: CreateProjectBodySchema,
-  //       response: { 201: BaseProjectResponseSchema },
-  //       summary: 'Create a project',
-  //       security: [{ bearerAuth: [] }],
-  //     },
-  //   },
-  //   projectController.createProject
-  // )
+  // 开放创建接口（测试环境/管理用途）
+  fastify.post(
+    '/projects',
+    {
+      onRequest: [fastify.verifyAccess, fastify.roleGuard('ADMIN')],
+      schema: {
+        description: '创建项目',
+        tags: ['Project'],
+        body: CreateProjectBodySchema,
+        response: { 201: BaseProjectResponseSchema },
+        summary: 'Create a project',
+        security: [{ bearerAuth: [] }],
+      },
+    },
+    projectController.createProject
+  )
   fastify.put(
     '/projects/:id',
     {

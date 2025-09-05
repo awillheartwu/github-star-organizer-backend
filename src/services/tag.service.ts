@@ -19,10 +19,7 @@ export async function getTagsService(ctx: Ctx, query: TagQuery) {
   const conditions: Record<string, unknown> = {}
   conditions.archived = archived ?? false
   if (keyword) {
-    conditions.OR = [
-      { name: { contains: keyword, mode: 'insensitive' } },
-      { description: { contains: keyword, mode: 'insensitive' } },
-    ]
+    conditions.OR = [{ name: { contains: keyword } }, { description: { contains: keyword } }]
   }
 
   // 构建排序
@@ -42,7 +39,15 @@ export async function getTagsService(ctx: Ctx, query: TagQuery) {
       take: limit,
       where: conditions,
       orderBy: order,
-      select: { id: true, name: true, description: true },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        archived: true,
+        createdAt: true,
+        updatedAt: true,
+        deletedAt: true,
+      },
     }),
     ctx.prisma.tag.count({ where: conditions }),
   ])

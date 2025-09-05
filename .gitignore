@@ -67,6 +67,7 @@ profile*
 .env
 .env.development
 .env.production
+.env.test
 
 # Dist or compiled files
 dist/

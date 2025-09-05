@@ -1,8 +1,8 @@
-import { Type } from "@sinclair/typebox";
+import { Type } from '@sinclair/typebox'
 
-import { __transformDate__ } from "./__transformDate__";
+import { __transformDate__ } from './__transformDate__'
 
-import { __nullable__ } from "./__nullable__";
+import { __nullable__ } from './__nullable__'
 
 export const TagPlain = Type.Object(
   {
@@ -10,78 +10,65 @@ export const TagPlain = Type.Object(
     name: Type.String(),
     description: __nullable__(Type.String()),
     archived: Type.Boolean(),
-    createdAt: Type.String({ format: "date-time" }),
-    updatedAt: Type.String({ format: "date-time" }),
-    deletedAt: __nullable__(Type.String({ format: "date-time" })),
+    createdAt: Type.String({ format: 'date-time' }),
+    updatedAt: Type.String({ format: 'date-time' }),
+    deletedAt: __nullable__(Type.String({ format: 'date-time' })),
   },
-  { additionalProperties: false },
-);
+  { additionalProperties: false }
+)
 
 export const TagRelations = Type.Object(
   {
     projects: Type.Array(
       Type.Object(
         { projectId: Type.String(), tagId: Type.String() },
-        { additionalProperties: false },
+        { additionalProperties: false }
       ),
-      { additionalProperties: false },
+      { additionalProperties: false }
     ),
   },
-  { additionalProperties: false },
-);
+  { additionalProperties: false }
+)
 
 export const TagWhere = Type.Partial(
   Type.Recursive(
     (Self) =>
       Type.Object(
         {
-          AND: Type.Union([
-            Self,
-            Type.Array(Self, { additionalProperties: false }),
-          ]),
-          NOT: Type.Union([
-            Self,
-            Type.Array(Self, { additionalProperties: false }),
-          ]),
+          AND: Type.Union([Self, Type.Array(Self, { additionalProperties: false })]),
+          NOT: Type.Union([Self, Type.Array(Self, { additionalProperties: false })]),
           OR: Type.Array(Self, { additionalProperties: false }),
           id: Type.String(),
           name: Type.String(),
           description: Type.String(),
           archived: Type.Boolean(),
-          createdAt: Type.String({ format: "date-time" }),
-          updatedAt: Type.String({ format: "date-time" }),
-          deletedAt: Type.String({ format: "date-time" }),
+          createdAt: Type.String({ format: 'date-time' }),
+          updatedAt: Type.String({ format: 'date-time' }),
+          deletedAt: Type.String({ format: 'date-time' }),
         },
-        { additionalProperties: false },
+        { additionalProperties: false }
       ),
-    { $id: "Tag" },
-  ),
-);
+    { $id: 'Tag' }
+  )
+)
 
 export const TagWhereUnique = Type.Recursive(
   (Self) =>
     Type.Intersect(
       [
-        Type.Partial(
-          Type.Object({ id: Type.String() }, { additionalProperties: false }),
-          { additionalProperties: false },
-        ),
+        Type.Partial(Type.Object({ id: Type.String() }, { additionalProperties: false }), {
+          additionalProperties: false,
+        }),
         Type.Union([Type.Object({ id: Type.String() })], {
           additionalProperties: false,
         }),
         Type.Partial(
           Type.Object({
-            AND: Type.Union([
-              Self,
-              Type.Array(Self, { additionalProperties: false }),
-            ]),
-            NOT: Type.Union([
-              Self,
-              Type.Array(Self, { additionalProperties: false }),
-            ]),
+            AND: Type.Union([Self, Type.Array(Self, { additionalProperties: false })]),
+            NOT: Type.Union([Self, Type.Array(Self, { additionalProperties: false })]),
             OR: Type.Array(Self, { additionalProperties: false }),
           }),
-          { additionalProperties: false },
+          { additionalProperties: false }
         ),
         Type.Partial(
           Type.Object(
@@ -90,18 +77,18 @@ export const TagWhereUnique = Type.Recursive(
               name: Type.String(),
               description: Type.String(),
               archived: Type.Boolean(),
-              createdAt: Type.String({ format: "date-time" }),
-              updatedAt: Type.String({ format: "date-time" }),
-              deletedAt: Type.String({ format: "date-time" }),
+              createdAt: Type.String({ format: 'date-time' }),
+              updatedAt: Type.String({ format: 'date-time' }),
+              deletedAt: Type.String({ format: 'date-time' }),
             },
-            { additionalProperties: false },
-          ),
+            { additionalProperties: false }
+          )
         ),
       ],
-      { additionalProperties: false },
+      { additionalProperties: false }
     ),
-  { $id: "Tag" },
-);
+  { $id: 'Tag' }
+)
 
 export const TagSelect = Type.Partial(
   Type.Object(
@@ -116,46 +103,43 @@ export const TagSelect = Type.Partial(
       deletedAt: Type.Boolean(),
       _count: Type.Boolean(),
     },
-    { additionalProperties: false },
-  ),
-);
+    { additionalProperties: false }
+  )
+)
 
 export const TagInclude = Type.Partial(
-  Type.Object(
-    { projects: Type.Boolean(), _count: Type.Boolean() },
-    { additionalProperties: false },
-  ),
-);
+  Type.Object({ projects: Type.Boolean(), _count: Type.Boolean() }, { additionalProperties: false })
+)
 
 export const TagOrderBy = Type.Partial(
   Type.Object(
     {
-      id: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
+      id: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
         additionalProperties: false,
       }),
-      name: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
+      name: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
         additionalProperties: false,
       }),
-      description: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
+      description: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
         additionalProperties: false,
       }),
-      archived: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
+      archived: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
         additionalProperties: false,
       }),
-      createdAt: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
+      createdAt: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
         additionalProperties: false,
       }),
-      updatedAt: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
+      updatedAt: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
         additionalProperties: false,
       }),
-      deletedAt: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
+      deletedAt: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
         additionalProperties: false,
       }),
     },
-    { additionalProperties: false },
-  ),
-);
+    { additionalProperties: false }
+  )
+)
 
 export const Tag = Type.Composite([TagPlain, TagRelations], {
   additionalProperties: false,
-});
+})

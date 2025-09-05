@@ -1,8 +1,8 @@
-import { Type } from "@sinclair/typebox";
+import { Type } from '@sinclair/typebox'
 
-import { __transformDate__ } from "./__transformDate__";
+import { __transformDate__ } from './__transformDate__'
 
-import { __nullable__ } from "./__nullable__";
+import { __nullable__ } from './__nullable__'
 
 export const ProjectPlain = Type.Object(
   {
@@ -15,20 +15,20 @@ export const ProjectPlain = Type.Object(
     language: __nullable__(Type.String()),
     stars: Type.Integer(),
     forks: Type.Integer(),
-    lastCommit: __nullable__(Type.String({ format: "date-time" })),
-    lastSyncAt: Type.String({ format: "date-time" }),
-    touchedAt: __nullable__(Type.String({ format: "date-time" })),
+    lastCommit: __nullable__(Type.String({ format: 'date-time' })),
+    lastSyncAt: Type.String({ format: 'date-time' }),
+    touchedAt: __nullable__(Type.String({ format: 'date-time' })),
     notes: __nullable__(Type.String()),
     favorite: Type.Boolean(),
     archived: Type.Boolean(),
     pinned: Type.Boolean(),
     score: __nullable__(Type.Integer()),
-    createdAt: Type.String({ format: "date-time" }),
-    updatedAt: Type.String({ format: "date-time" }),
-    deletedAt: __nullable__(Type.String({ format: "date-time" })),
+    createdAt: Type.String({ format: 'date-time' }),
+    updatedAt: Type.String({ format: 'date-time' }),
+    deletedAt: __nullable__(Type.String({ format: 'date-time' })),
   },
-  { additionalProperties: false },
-);
+  { additionalProperties: false }
+)
 
 export const ProjectRelations = Type.Object(
   {
@@ -39,38 +39,32 @@ export const ProjectRelations = Type.Object(
           url: Type.String(),
           projectId: Type.String(),
           archived: Type.Boolean(),
-          createdAt: Type.String({ format: "date-time" }),
-          updatedAt: Type.String({ format: "date-time" }),
-          deletedAt: __nullable__(Type.String({ format: "date-time" })),
+          createdAt: Type.String({ format: 'date-time' }),
+          updatedAt: Type.String({ format: 'date-time' }),
+          deletedAt: __nullable__(Type.String({ format: 'date-time' })),
         },
-        { additionalProperties: false },
+        { additionalProperties: false }
       ),
-      { additionalProperties: false },
+      { additionalProperties: false }
     ),
     tags: Type.Array(
       Type.Object(
         { projectId: Type.String(), tagId: Type.String() },
-        { additionalProperties: false },
+        { additionalProperties: false }
       ),
-      { additionalProperties: false },
+      { additionalProperties: false }
     ),
   },
-  { additionalProperties: false },
-);
+  { additionalProperties: false }
+)
 
 export const ProjectWhere = Type.Partial(
   Type.Recursive(
     (Self) =>
       Type.Object(
         {
-          AND: Type.Union([
-            Self,
-            Type.Array(Self, { additionalProperties: false }),
-          ]),
-          NOT: Type.Union([
-            Self,
-            Type.Array(Self, { additionalProperties: false }),
-          ]),
+          AND: Type.Union([Self, Type.Array(Self, { additionalProperties: false })]),
+          NOT: Type.Union([Self, Type.Array(Self, { additionalProperties: false })]),
           OR: Type.Array(Self, { additionalProperties: false }),
           id: Type.String(),
           githubId: Type.Integer(),
@@ -81,23 +75,23 @@ export const ProjectWhere = Type.Partial(
           language: Type.String(),
           stars: Type.Integer(),
           forks: Type.Integer(),
-          lastCommit: Type.String({ format: "date-time" }),
-          lastSyncAt: Type.String({ format: "date-time" }),
-          touchedAt: Type.String({ format: "date-time" }),
+          lastCommit: Type.String({ format: 'date-time' }),
+          lastSyncAt: Type.String({ format: 'date-time' }),
+          touchedAt: Type.String({ format: 'date-time' }),
           notes: Type.String(),
           favorite: Type.Boolean(),
           archived: Type.Boolean(),
           pinned: Type.Boolean(),
           score: Type.Integer(),
-          createdAt: Type.String({ format: "date-time" }),
-          updatedAt: Type.String({ format: "date-time" }),
-          deletedAt: Type.String({ format: "date-time" }),
+          createdAt: Type.String({ format: 'date-time' }),
+          updatedAt: Type.String({ format: 'date-time' }),
+          deletedAt: Type.String({ format: 'date-time' }),
         },
-        { additionalProperties: false },
+        { additionalProperties: false }
       ),
-    { $id: "Project" },
-  ),
-);
+    { $id: 'Project' }
+  )
+)
 
 export const ProjectWhereUnique = Type.Recursive(
   (Self) =>
@@ -106,30 +100,21 @@ export const ProjectWhereUnique = Type.Recursive(
         Type.Partial(
           Type.Object(
             { id: Type.String(), githubId: Type.Integer() },
-            { additionalProperties: false },
+            { additionalProperties: false }
           ),
-          { additionalProperties: false },
+          { additionalProperties: false }
         ),
         Type.Union(
-          [
-            Type.Object({ id: Type.String() }),
-            Type.Object({ githubId: Type.Integer() }),
-          ],
-          { additionalProperties: false },
+          [Type.Object({ id: Type.String() }), Type.Object({ githubId: Type.Integer() })],
+          { additionalProperties: false }
         ),
         Type.Partial(
           Type.Object({
-            AND: Type.Union([
-              Self,
-              Type.Array(Self, { additionalProperties: false }),
-            ]),
-            NOT: Type.Union([
-              Self,
-              Type.Array(Self, { additionalProperties: false }),
-            ]),
+            AND: Type.Union([Self, Type.Array(Self, { additionalProperties: false })]),
+            NOT: Type.Union([Self, Type.Array(Self, { additionalProperties: false })]),
             OR: Type.Array(Self, { additionalProperties: false }),
           }),
-          { additionalProperties: false },
+          { additionalProperties: false }
         ),
         Type.Partial(
           Type.Object(
@@ -143,26 +128,26 @@ export const ProjectWhereUnique = Type.Recursive(
               language: Type.String(),
               stars: Type.Integer(),
               forks: Type.Integer(),
-              lastCommit: Type.String({ format: "date-time" }),
-              lastSyncAt: Type.String({ format: "date-time" }),
-              touchedAt: Type.String({ format: "date-time" }),
+              lastCommit: Type.String({ format: 'date-time' }),
+              lastSyncAt: Type.String({ format: 'date-time' }),
+              touchedAt: Type.String({ format: 'date-time' }),
               notes: Type.String(),
               favorite: Type.Boolean(),
               archived: Type.Boolean(),
               pinned: Type.Boolean(),
               score: Type.Integer(),
-              createdAt: Type.String({ format: "date-time" }),
-              updatedAt: Type.String({ format: "date-time" }),
-              deletedAt: Type.String({ format: "date-time" }),
+              createdAt: Type.String({ format: 'date-time' }),
+              updatedAt: Type.String({ format: 'date-time' }),
+              deletedAt: Type.String({ format: 'date-time' }),
             },
-            { additionalProperties: false },
-          ),
+            { additionalProperties: false }
+          )
         ),
       ],
-      { additionalProperties: false },
+      { additionalProperties: false }
     ),
-  { $id: "Project" },
-);
+  { $id: 'Project' }
+)
 
 export const ProjectSelect = Type.Partial(
   Type.Object(
@@ -191,9 +176,9 @@ export const ProjectSelect = Type.Partial(
       deletedAt: Type.Boolean(),
       _count: Type.Boolean(),
     },
-    { additionalProperties: false },
-  ),
-);
+    { additionalProperties: false }
+  )
+)
 
 export const ProjectInclude = Type.Partial(
   Type.Object(
@@ -202,78 +187,78 @@ export const ProjectInclude = Type.Partial(
       tags: Type.Boolean(),
       _count: Type.Boolean(),
     },
-    { additionalProperties: false },
-  ),
-);
+    { additionalProperties: false }
+  )
+)
 
 export const ProjectOrderBy = Type.Partial(
   Type.Object(
     {
-      id: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
+      id: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
         additionalProperties: false,
       }),
-      githubId: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
+      githubId: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
         additionalProperties: false,
       }),
-      name: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
+      name: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
         additionalProperties: false,
       }),
-      fullName: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
+      fullName: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
         additionalProperties: false,
       }),
-      url: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
+      url: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
         additionalProperties: false,
       }),
-      description: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
+      description: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
         additionalProperties: false,
       }),
-      language: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
+      language: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
         additionalProperties: false,
       }),
-      stars: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
+      stars: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
         additionalProperties: false,
       }),
-      forks: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
+      forks: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
         additionalProperties: false,
       }),
-      lastCommit: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
+      lastCommit: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
         additionalProperties: false,
       }),
-      lastSyncAt: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
+      lastSyncAt: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
         additionalProperties: false,
       }),
-      touchedAt: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
+      touchedAt: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
         additionalProperties: false,
       }),
-      notes: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
+      notes: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
         additionalProperties: false,
       }),
-      favorite: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
+      favorite: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
         additionalProperties: false,
       }),
-      archived: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
+      archived: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
         additionalProperties: false,
       }),
-      pinned: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
+      pinned: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
         additionalProperties: false,
       }),
-      score: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
+      score: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
         additionalProperties: false,
       }),
-      createdAt: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
+      createdAt: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
         additionalProperties: false,
       }),
-      updatedAt: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
+      updatedAt: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
         additionalProperties: false,
       }),
-      deletedAt: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
+      deletedAt: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
         additionalProperties: false,
       }),
     },
-    { additionalProperties: false },
-  ),
-);
+    { additionalProperties: false }
+  )
+)
 
 export const Project = Type.Composite([ProjectPlain, ProjectRelations], {
   additionalProperties: false,
-});
+})

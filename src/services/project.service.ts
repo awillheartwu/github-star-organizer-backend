@@ -7,8 +7,6 @@ import type { ProjectWithRelations } from '../helpers/transform.helper'
 import { toProjectDto, toProjectDtos } from '../helpers/transform.helper'
 import { Project } from '@prisma/client'
 import { Ctx } from '../helpers/context.helper'
-// import { Project } from '../generated/prismabox/Project'
-// import { mockFromTypeboxSchema } from '../utils/mockTypebox'
 
 type ProjectQuery = Static<typeof ProjectQuerySchema> & { offset: number; limit: number }
 type CreateProjectBody = Static<typeof CreateProjectBodySchema>
@@ -72,19 +70,19 @@ export async function getProjectsService(ctx: Ctx, query: ProjectQuery) {
   if (pinned !== undefined) conditions.pinned = !!pinned
 
   // 语言
-  if (language) conditions.language = { equals: language, mode: 'insensitive' }
-  if (languages?.length) conditions.language = { in: languages, mode: 'insensitive' }
+  if (language) conditions.language = { equals: language }
+  if (languages?.length) conditions.language = { in: languages }
 
   // 名称模糊搜索
-  if (name) conditions.name = { contains: name, mode: 'insensitive' }
+  if (name) conditions.name = { contains: name }
 
   // 关键词搜索
   if (keyword) {
     // 统一关键词：name / fullName / description
     conditions.OR = [
-      { name: { contains: keyword, mode: 'insensitive' } },
-      { fullName: { contains: keyword, mode: 'insensitive' } },
-      { description: { contains: keyword, mode: 'insensitive' } },
+      { name: { contains: keyword } },
+      { fullName: { contains: keyword } },
+      { description: { contains: keyword } },
     ]
   }
 
@@ -154,9 +152,6 @@ export async function getProjectsService(ctx: Ctx, query: ProjectQuery) {
   // 返回结果
   const result = { data: flatData, total }
 
-  // 仅用于生成 Mock 数据
-  /* const mockResponse = mockFromTypeboxSchema(Project)
-  console.log(JSON.stringify(mockResponse, null, 2)) */
   return result
 }
 

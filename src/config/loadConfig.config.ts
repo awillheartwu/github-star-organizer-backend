@@ -16,9 +16,12 @@ function loadDotenvFiles() {
 // 2) 描述和验证原始环境变量
 const EnvSchema = Type.Object(
   {
-    NODE_ENV: Type.Union([Type.Literal('development'), Type.Literal('production')], {
-      default: 'development',
-    }),
+    NODE_ENV: Type.Union(
+      [Type.Literal('development'), Type.Literal('production'), Type.Literal('test')],
+      {
+        default: 'development',
+      }
+    ),
     PORT: Type.Number({ default: 3000 }),
     FASTIFY_CLOSE_GRACE_DELAY: Type.String({ default: '500' }), // ms
     LOG_LEVEL: Type.Union(
@@ -118,7 +121,11 @@ type Env = Static<typeof EnvSchema>
 // 3) 应用配置的形状暴露给代码库的其余部分
 const AppConfigSchema = Type.Object(
   {
-    env: Type.Union([Type.Literal('development'), Type.Literal('production')]),
+    env: Type.Union([
+      Type.Literal('development'),
+      Type.Literal('production'),
+      Type.Literal('test'),
+    ]),
     port: Type.Number(),
     fastifyCloseGraceDelay: Type.String({ default: '500' }), // ms
     logLevel: Type.Union([

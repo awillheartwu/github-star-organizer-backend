@@ -112,6 +112,7 @@ type CleanupBullOpts = {
   completedAfterDays?: number
   failedAfterDays?: number
   trimEventsTo?: number
+  queueName?: string
   useLock?: boolean
   lockKey?: string
   lockTtlSec?: number
@@ -153,7 +154,8 @@ export async function cleanupBullmqService(ctx: Ctx, opts: CleanupBullOpts = {})
     enableReadyCheck: true,
   }
 
-  const queue = new Queue(SYNC_STARS_QUEUE, { connection, prefix: ctx.config.bullPrefix })
+  const queueName = opts.queueName ?? SYNC_STARS_QUEUE
+  const queue = new Queue(queueName, { connection, prefix: ctx.config.bullPrefix })
   await queue.waitUntilReady()
 
   let cleanedCompleted = 0
@@ -192,7 +194,7 @@ export async function cleanupBullmqService(ctx: Ctx, opts: CleanupBullOpts = {})
 
     return {
       dryRun,
-      queue: SYNC_STARS_QUEUE,
+      queue: queueName,
       cleanedCompleted,
       cleanedFailed,
       trimmedEventsTo: trimEventsTo,

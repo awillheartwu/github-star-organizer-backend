@@ -1,67 +1,61 @@
-import { Type } from "@sinclair/typebox";
+import { Type } from '@sinclair/typebox'
 
-import { __transformDate__ } from "./__transformDate__";
+import { __transformDate__ } from './__transformDate__'
 
-import { __nullable__ } from "./__nullable__";
+import { __nullable__ } from './__nullable__'
 
 export const ArchivedProjectPlain = Type.Object(
   {
     id: Type.String(),
     githubId: __nullable__(Type.Integer()),
     originalProjectId: __nullable__(Type.String()),
-    reason: Type.Union([Type.Literal("manual"), Type.Literal("unstarred")], {
+    reason: Type.Union([Type.Literal('manual'), Type.Literal('unstarred')], {
       additionalProperties: false,
       description: `归档原因`,
     }),
     snapshot: Type.Any(),
-    archivedAt: Type.String({ format: "date-time" }),
+    archivedAt: Type.String({ format: 'date-time' }),
   },
   {
     additionalProperties: false,
     description: `归档的 Project 快照（允许同一 githubId 多次归档）`,
-  },
-);
+  }
+)
 
 export const ArchivedProjectRelations = Type.Object(
   {},
   {
     additionalProperties: false,
     description: `归档的 Project 快照（允许同一 githubId 多次归档）`,
-  },
-);
+  }
+)
 
 export const ArchivedProjectWhere = Type.Partial(
   Type.Recursive(
     (Self) =>
       Type.Object(
         {
-          AND: Type.Union([
-            Self,
-            Type.Array(Self, { additionalProperties: false }),
-          ]),
-          NOT: Type.Union([
-            Self,
-            Type.Array(Self, { additionalProperties: false }),
-          ]),
+          AND: Type.Union([Self, Type.Array(Self, { additionalProperties: false })]),
+          NOT: Type.Union([Self, Type.Array(Self, { additionalProperties: false })]),
           OR: Type.Array(Self, { additionalProperties: false }),
           id: Type.String(),
           githubId: Type.Integer(),
           originalProjectId: Type.String(),
-          reason: Type.Union(
-            [Type.Literal("manual"), Type.Literal("unstarred")],
-            { additionalProperties: false, description: `归档原因` },
-          ),
+          reason: Type.Union([Type.Literal('manual'), Type.Literal('unstarred')], {
+            additionalProperties: false,
+            description: `归档原因`,
+          }),
           snapshot: Type.Any(),
-          archivedAt: Type.String({ format: "date-time" }),
+          archivedAt: Type.String({ format: 'date-time' }),
         },
         {
           additionalProperties: false,
           description: `归档的 Project 快照（允许同一 githubId 多次归档）`,
-        },
+        }
       ),
-    { $id: "ArchivedProject" },
-  ),
-);
+    { $id: 'ArchivedProject' }
+  )
+)
 
 export const ArchivedProjectWhereUnique = Type.Recursive(
   (Self) =>
@@ -73,26 +67,20 @@ export const ArchivedProjectWhereUnique = Type.Recursive(
             {
               additionalProperties: false,
               description: `归档的 Project 快照（允许同一 githubId 多次归档）`,
-            },
+            }
           ),
-          { additionalProperties: false },
+          { additionalProperties: false }
         ),
         Type.Union([Type.Object({ id: Type.String() })], {
           additionalProperties: false,
         }),
         Type.Partial(
           Type.Object({
-            AND: Type.Union([
-              Self,
-              Type.Array(Self, { additionalProperties: false }),
-            ]),
-            NOT: Type.Union([
-              Self,
-              Type.Array(Self, { additionalProperties: false }),
-            ]),
+            AND: Type.Union([Self, Type.Array(Self, { additionalProperties: false })]),
+            NOT: Type.Union([Self, Type.Array(Self, { additionalProperties: false })]),
             OR: Type.Array(Self, { additionalProperties: false }),
           }),
-          { additionalProperties: false },
+          { additionalProperties: false }
         ),
         Type.Partial(
           Type.Object(
@@ -100,21 +88,21 @@ export const ArchivedProjectWhereUnique = Type.Recursive(
               id: Type.String(),
               githubId: Type.Integer(),
               originalProjectId: Type.String(),
-              reason: Type.Union(
-                [Type.Literal("manual"), Type.Literal("unstarred")],
-                { additionalProperties: false, description: `归档原因` },
-              ),
+              reason: Type.Union([Type.Literal('manual'), Type.Literal('unstarred')], {
+                additionalProperties: false,
+                description: `归档原因`,
+              }),
               snapshot: Type.Any(),
-              archivedAt: Type.String({ format: "date-time" }),
+              archivedAt: Type.String({ format: 'date-time' }),
             },
-            { additionalProperties: false },
-          ),
+            { additionalProperties: false }
+          )
         ),
       ],
-      { additionalProperties: false },
+      { additionalProperties: false }
     ),
-  { $id: "ArchivedProject" },
-);
+  { $id: 'ArchivedProject' }
+)
 
 export const ArchivedProjectSelect = Type.Partial(
   Type.Object(
@@ -130,9 +118,9 @@ export const ArchivedProjectSelect = Type.Partial(
     {
       additionalProperties: false,
       description: `归档的 Project 快照（允许同一 githubId 多次归档）`,
-    },
-  ),
-);
+    }
+  )
+)
 
 export const ArchivedProjectInclude = Type.Partial(
   Type.Object(
@@ -140,38 +128,36 @@ export const ArchivedProjectInclude = Type.Partial(
     {
       additionalProperties: false,
       description: `归档的 Project 快照（允许同一 githubId 多次归档）`,
-    },
-  ),
-);
+    }
+  )
+)
 
 export const ArchivedProjectOrderBy = Type.Partial(
   Type.Object(
     {
-      id: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
+      id: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
         additionalProperties: false,
       }),
-      githubId: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
+      githubId: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
         additionalProperties: false,
       }),
-      originalProjectId: Type.Union(
-        [Type.Literal("asc"), Type.Literal("desc")],
-        { additionalProperties: false },
-      ),
-      snapshot: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
+      originalProjectId: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
         additionalProperties: false,
       }),
-      archivedAt: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
+      snapshot: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
+        additionalProperties: false,
+      }),
+      archivedAt: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
         additionalProperties: false,
       }),
     },
     {
       additionalProperties: false,
       description: `归档的 Project 快照（允许同一 githubId 多次归档）`,
-    },
-  ),
-);
+    }
+  )
+)
 
-export const ArchivedProject = Type.Composite(
-  [ArchivedProjectPlain, ArchivedProjectRelations],
-  { additionalProperties: false },
-);
+export const ArchivedProject = Type.Composite([ArchivedProjectPlain, ArchivedProjectRelations], {
+  additionalProperties: false,
+})

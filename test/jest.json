@@ -1,0 +1,48 @@
+{
+  "rootDir": "..",
+  "testEnvironment": "node",
+  "roots": ["<rootDir>/src", "<rootDir>/test"],
+  "testMatch": ["**/?(*.)+(test).ts"],
+  "transform": {
+    "^.+\\.(t|j)s$": "babel-jest"
+  },
+  "moduleDirectories": ["node_modules", "<rootDir>/src"],
+  "setupFilesAfterEnv": ["<rootDir>/test/jest.setup.ts"],
+  "testPathIgnorePatterns": ["<rootDir>/test/debug/"],
+  "collectCoverageFrom": [
+    "src/**/*.ts",
+    "!src/generated/**",
+    "!src/**/*.d.ts",
+    "!src/main.ts",
+    "!src/app.ts",
+    "!src/scripts/**",
+    "!src/types/**",
+    "!src/utils/**",
+    "!src/services/sync/github/**"
+  ],
+  "coveragePathIgnorePatterns": [
+    "/node_modules/",
+    "<rootDir>/src/plugins/(prisma|redis|rate-limit|sensible|mailer|bullmq)\\.ts",
+    "<rootDir>/src/schemas/admin.schema.ts",
+    "<rootDir>/src/services/maintenance.service.ts"
+  ],
+  "coverageDirectory": "coverage",
+  "coverageReporters": ["text", "lcov", "html"],
+  "coverageThreshold": {
+    "global": {
+      "statements": 60,
+      "branches": 50,
+      "functions": 60,
+      "lines": 60
+    },
+    "src/services/": {
+      "statements": 80,
+      "branches": 70,
+      "functions": 80,
+      "lines": 80
+    }
+  },
+  "verbose": true,
+  "maxWorkers": 1,
+  "forceExit": true
+}
