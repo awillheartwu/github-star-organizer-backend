@@ -1,7 +1,7 @@
-import type { Ctx } from '../../../helpers/context.helper'
-import type { SyncJobData, SyncStats } from '../../../types/sync.types'
-import { createOctokit, iterateStarred, type GitHubStarredItem } from './github.client'
-import { archiveAndDeleteProjectById } from '../../project.service'
+import type { Ctx } from '../../helpers/context.helper'
+import type { SyncJobData, SyncStats } from '../../types/sync.types'
+import { createOctokit, iterateStarred, type GitHubStarredItem } from '../github/github.client'
+import { archiveAndDeleteProjectById } from '../project.service'
 import {
   SYNC_SOURCE_GITHUB_STARS,
   buildGithubStarsKey,
@@ -11,7 +11,6 @@ import {
   markSuccess,
   touchRun,
 } from '../sync.state.service'
-
 // 将 GitHub starred 项映射为 Project 的数据结构
 function mapToProjectData(item: GitHubStarredItem) {
   const r = item.repo
@@ -29,7 +28,6 @@ function mapToProjectData(item: GitHubStarredItem) {
     touchedAt: new Date(),
   }
 }
-
 // 比较需要更新的字段，返回差异补丁（无差异则为空对象）
 function diffProject(existing: Record<string, unknown>, incoming: Record<string, unknown>) {
   const patch: Record<string, unknown> = {}
@@ -57,7 +55,6 @@ function diffProject(existing: Record<string, unknown>, incoming: Record<string,
   }
   return patch
 }
-
 export async function handleSyncStarsJob(ctx: Ctx, data: SyncJobData): Promise<SyncStats> {
   const startedAt = new Date()
   const { options } = data
@@ -71,10 +68,8 @@ export async function handleSyncStarsJob(ctx: Ctx, data: SyncJobData): Promise<S
   if (options.softDeleteUnstarred === undefined && isFull) {
     softDeleteUnstarred = true
   }
-
   const source = SYNC_SOURCE_GITHUB_STARS
   const key = buildGithubStarsKey(ctx.config.githubUsername)
-
   // 确保有一条 SyncState，并标记开始
   await ensureState(ctx, source, key)
   await touchRun(ctx, source, key, startedAt)
@@ -84,7 +79,6 @@ export async function handleSyncStarsJob(ctx: Ctx, data: SyncJobData): Promise<S
   // full 忽略 etag/cursor；incremental 使用
   const etagForFetch = isFull ? undefined : prevEtag
   const cursorForStop = isFull ? undefined : prevCursor
-
   // 可视化关键上下文：模式/分页/历史游标与 ETag
   ctx.log.info(
     {
@@ -98,9 +92,7 @@ export async function handleSyncStarsJob(ctx: Ctx, data: SyncJobData): Promise<S
     },
     '[sync] start GitHub stars sync'
   )
-
   const octokit = createOctokit(ctx.config.githubToken, ctx.config.syncRequestTimeout)
-
   let firstPageEtag: string | undefined
   let firstPageTopCursor: string | undefined
   let pages = 0
@@ -112,11 +104,10 @@ export async function handleSyncStarsJob(ctx: Ctx, data: SyncJobData): Promise<S
   const seenIds: number[] = []
   let reachedEnd = false
   let stoppedByCursor = false
-
   // 增量模式：先做 1 条的轻量预检，若 304 直接返回
   if (!isFull && prevEtag) {
     try {
-      const headModule = await import('./github.client')
+      const headModule = await import('../github/github.client')
       const head = await headModule.fetchFirstStarPage(octokit, {
         username: ctx.config.githubUsername,
         etag: prevEtag,
@@ -154,7 +145,6 @@ export async function handleSyncStarsJob(ctx: Ctx, data: SyncJobData): Promise<S
       ctx.log.warn({ e }, '[sync] precheck failed, continue normal iteration')
     }
   }
-
   try {
     for await (const res of iterateStarred(octokit, {
       username: ctx.config.githubUsername,
@@ -197,16 +187,13 @@ export async function handleSyncStarsJob(ctx: Ctx, data: SyncJobData): Promise<S
           ctx.log.debug({ firstPageEtag, firstPageTopCursor }, '[sync] first page meta captured')
         }
       }
-
       if (res.secondaryRateLimited) {
         // 抛错交给 BullMQ 重试（按 backoff）
         const retry = res.retryAfterSec ? ` retry-after=${res.retryAfterSec}s` : ''
         throw new Error(`GitHub secondary rate limited.${retry}`)
       }
-
       rateLimitRemaining = res.rateLimitRemaining ?? rateLimitRemaining
       scanned += res.items.length
-
       // 入库
       for (const item of res.items) {
         // 若已存在游标，遇到“旧数据”则提前停止（不再向后翻页）
@@ -222,10 +209,8 @@ export async function handleSyncStarsJob(ctx: Ctx, data: SyncJobData): Promise<S
             break
           }
         }
-
         const dataMap = mapToProjectData(item)
         seenIds.push(dataMap.githubId)
-
         const existing = await ctx.prisma.project.findUnique({
           where: { githubId: dataMap.githubId },
           select: {
@@ -242,13 +227,11 @@ export async function handleSyncStarsJob(ctx: Ctx, data: SyncJobData): Promise<S
             archived: true,
           },
         })
-
         if (!existing) {
           await ctx.prisma.project.create({ data: dataMap })
           created += 1
           continue
         }
-
         // 若已归档，更新时可解除归档（这里选择不自动解除，保持安全；如需可设置 archived=false）
         const patch = diffProject(existing as unknown as Record<string, unknown>, dataMap)
         if (Object.keys(patch).length > 0) {
@@ -266,16 +249,13 @@ export async function handleSyncStarsJob(ctx: Ctx, data: SyncJobData): Promise<S
           })
         }
       }
-
       // 如因游标命中提前停止，跳出外层分页循环
       if (stoppedByCursor) break
-
       // 判断是否到达尾页（简单依据：返回数量 < perPage）
       if (res.items.length < Math.min(Math.max(perPage, 1), 100)) {
         reachedEnd = true
       }
     }
-
     // 可选：软删除不在本次结果中的项目（仅在全量且抓到末页时）
     let softDeleted = 0
     // 仅在真正遍历到尾页（非游标提前停止）时进行软删除（改为：归档后删除）
@@ -295,7 +275,6 @@ export async function handleSyncStarsJob(ctx: Ctx, data: SyncJobData): Promise<S
         }
       }
     }
-
     const finishedAt = new Date()
     const stats: SyncStats = {
       scanned,

@@ -72,9 +72,38 @@ export class TestDatabase {
         "archived" BOOLEAN NOT NULL DEFAULT false,
         "pinned" BOOLEAN NOT NULL DEFAULT false,
         "score" INTEGER,
+        "summaryShort" TEXT,
+        "summaryLong" TEXT,
         "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         "deletedAt" DATETIME
+      )
+    `)
+
+    // 兼容旧的测试数据库文件：补充新增的列（如果不存在）
+    try {
+      await this.instance.$executeRawUnsafe('ALTER TABLE "Project" ADD COLUMN "summaryShort" TEXT')
+    } catch (e) {
+      // 已存在则忽略
+    }
+    try {
+      await this.instance.$executeRawUnsafe('ALTER TABLE "Project" ADD COLUMN "summaryLong" TEXT')
+    } catch (e) {
+      // 已存在则忽略
+    }
+
+    // AI 摘要历史表
+    await this.instance.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "AiSummary" (
+        "id" TEXT NOT NULL PRIMARY KEY,
+        "projectId" TEXT NOT NULL,
+        "style" TEXT NOT NULL,
+        "content" TEXT NOT NULL,
+        "model" TEXT,
+        "lang" TEXT,
+        "tokens" INTEGER,
+        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY ("projectId") REFERENCES "Project" ("id") ON DELETE CASCADE
       )
     `)
 
@@ -157,6 +186,7 @@ export class TestDatabase {
     const tables = [
       'ProjectTag',
       'VideoLink',
+      'AiSummary',
       'RefreshToken',
       'ArchivedProject',
       'SyncState',

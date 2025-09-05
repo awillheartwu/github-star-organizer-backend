@@ -9,7 +9,7 @@ import {
 } from '../constants/queueNames'
 import type { SyncJobData, SyncStats } from '../types/sync.types'
 import type { Ctx } from '../helpers/context.helper'
-import { handleSyncStarsJob } from '../services/sync/github/githubStar.service'
+import { handleSyncStarsJob } from '../services/github/githubStar.service'
 import * as notify from '../services/notify.service'
 import { cleanupRefreshTokensService, cleanupBullmqService } from '../services/maintenance.service'
 

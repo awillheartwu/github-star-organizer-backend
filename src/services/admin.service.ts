@@ -3,7 +3,7 @@ import type { Ctx } from '../helpers/context.helper'
 import type { SyncJobData, SyncStats } from '../types/sync.types'
 import { AppError } from '../helpers/error.helper'
 import { ERROR_TYPES, HTTP_STATUS } from '../constants/errorCodes'
-import { SYNC_SOURCE_GITHUB_STARS, buildGithubStarsKey, getState } from './sync/sync.state.service'
+import { SYNC_SOURCE_GITHUB_STARS, buildGithubStarsKey, getState } from './sync.state.service'
 import { createHash } from 'node:crypto'
 
 function hashOptions(opts: SyncJobData['options']) {

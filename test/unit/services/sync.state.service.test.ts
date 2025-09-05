@@ -15,7 +15,7 @@ import {
   markSuccess,
   markError,
   normalizeErrorMessage,
-} from '../../../src/services/sync/sync.state.service'
+} from '../../../src/services/sync.state.service'
 
 describe('sync.state.service', () => {
   let prisma: PrismaClient

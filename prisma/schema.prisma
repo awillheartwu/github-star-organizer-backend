@@ -23,8 +23,8 @@ datasource db {
 
 /// 归档原因
 enum ArchivedReason {
-  manual     // 手动删除
-  unstarred  // 同步检测到已取消 star
+  manual // 手动删除
+  unstarred // 同步检测到已取消 star
 }
 
 model Project {
@@ -48,13 +48,17 @@ model Project {
   pinned     Boolean     @default(false) // 是否置顶
   score      Int? // 用户评分（可选）
   videoLinks VideoLink[] // 关联的视频链接（多对一）
+  // 最新 AI 摘要（冗余存储，便于快速查询与展示）
+  summaryShort String?
+  summaryLong  String?
 
   // Relations
   tags ProjectTag[] // 项目关联的标签（多对多）
 
-  createdAt DateTime  @default(now()) // 创建时间
-  updatedAt DateTime  @default(now()) @updatedAt // 更新时间（自动更新）
+  createdAt DateTime    @default(now()) // 创建时间
+  updatedAt DateTime    @default(now()) @updatedAt // 更新时间（自动更新）
   deletedAt DateTime? // 软删除时间（可选）
+  AiSummary AiSummary[]
 
   // 🔽 索引区（新增）
   @@index([archived, createdAt]) // 常用 where archived=false 排序 createdAt
@@ -67,6 +71,29 @@ model Project {
   @@index([lastSyncAt])
   @@index([touchedAt])
   @@index([name]) // name 模糊匹配也有帮助（SQLite 里作用有限，但保留可读性）
+}
+
+/// 历史 AI 摘要（便于追溯不同模型/时间的结果）
+enum AiSummaryStyle {
+  short
+  long
+}
+
+model AiSummary {
+  id        String  @id @default(uuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id])
+
+  style   AiSummaryStyle
+  content String
+  model   String?
+  lang    String?
+  tokens  Int?
+
+  createdAt DateTime @default(now())
+
+  @@index([projectId, createdAt])
+  @@index([style])
 }
 
 model Tag {
@@ -143,10 +170,10 @@ model RefreshToken {
   tokenHash String @unique
   jti       String @unique
 
-  revoked           Boolean  @default(false)
+  revoked           Boolean   @default(false)
   replacedByTokenId String?
   expiresAt         DateTime
-  createdAt         DateTime @default(now())
+  createdAt         DateTime  @default(now())
   revokedAt         DateTime?
 
   ip        String?
@@ -160,47 +187,47 @@ model RefreshToken {
 /// 记录各类同步任务的游标与状态
 /// 兼容多来源与多任务，通过 (source, key) 唯一定位。
 model SyncState {
-  id           String   @id @default(uuid())
+  id String @id @default(uuid())
 
   /// 同步来源：例如 'github:stars'
-  source       String
+  source String
 
   /// 任务键：例如 'user:YOUR_GITHUB_USERNAME'
-  key          String
+  key String
 
   /// 用于增量同步的游标（例如 GitHub starred_at 的 ISO 字符串）
-  cursor       String?   // e.g. "2025-09-01T05:11:22Z"
+  cursor String? // e.g. "2025-09-01T05:11:22Z"
 
   /// HTTP ETag（If-None-Match/304），可选加速
-  etag         String?
+  etag String?
 
   /// 最近一次运行时间/成功时间/失败时间
-  lastRunAt     DateTime? 
+  lastRunAt     DateTime?
   lastSuccessAt DateTime?
   lastErrorAt   DateTime?
 
   /// 最近一次错误信息（简要）
-  lastError     String?
+  lastError String?
 
   /// 最近一次统计信息（JSON 串，记录 created/updated 等）
-  statsJson    String?
+  statsJson String?
 
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @default(now()) @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 
-  @@unique([source, key])  // 一个来源+键只保留一条状态
+  @@unique([source, key]) // 一个来源+键只保留一条状态
   @@index([source])
   @@index([updatedAt])
 }
 
 /// 归档的 Project 快照（允许同一 githubId 多次归档）
 model ArchivedProject {
-  id                String          @id @default(uuid())
+  id                String         @id @default(uuid())
   githubId          Int?
   originalProjectId String?
   reason            ArchivedReason
   snapshot          Json
-  archivedAt        DateTime        @default(now())
+  archivedAt        DateTime       @default(now())
 
   @@index([githubId])
   @@index([archivedAt])

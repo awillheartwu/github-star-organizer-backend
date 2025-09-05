@@ -1,5 +1,5 @@
-import type { Ctx } from '../../helpers/context.helper'
-import type { SyncStats } from '../../types/sync.types'
+import type { Ctx } from '../helpers/context.helper'
+import type { SyncStats } from '../types/sync.types'
 import type { SyncState as PrismaSyncState } from '@prisma/client'
 
 export type SyncState = PrismaSyncState

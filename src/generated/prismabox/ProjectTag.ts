@@ -30,6 +30,8 @@ export const ProjectTagRelations = Type.Object(
         archived: Type.Boolean(),
         pinned: Type.Boolean(),
         score: __nullable__(Type.Integer()),
+        summaryShort: __nullable__(Type.String()),
+        summaryLong: __nullable__(Type.String()),
         createdAt: Type.String({ format: 'date-time' }),
         updatedAt: Type.String({ format: 'date-time' }),
         deletedAt: __nullable__(Type.String({ format: 'date-time' })),

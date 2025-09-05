@@ -1,4 +1,4 @@
-import { normalizeErrorMessage } from '../../src/services/sync/sync.state.service'
+import { normalizeErrorMessage } from '../../src/services/sync.state.service'
 
 describe('utility functions', () => {
   test('normalizeErrorMessage truncates long messages and extracts from Error', () => {

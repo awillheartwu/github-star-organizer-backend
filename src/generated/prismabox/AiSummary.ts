@@ -4,20 +4,24 @@ import { __transformDate__ } from './__transformDate__'
 
 import { __nullable__ } from './__nullable__'
 
-export const VideoLinkPlain = Type.Object(
+export const AiSummaryPlain = Type.Object(
   {
     id: Type.String(),
-    url: Type.String(),
     projectId: Type.String(),
-    archived: Type.Boolean(),
+    style: Type.Union([Type.Literal('short'), Type.Literal('long')], {
+      additionalProperties: false,
+      description: `历史 AI 摘要（便于追溯不同模型/时间的结果）`,
+    }),
+    content: Type.String(),
+    model: __nullable__(Type.String()),
+    lang: __nullable__(Type.String()),
+    tokens: __nullable__(Type.Integer()),
     createdAt: Type.String({ format: 'date-time' }),
-    updatedAt: Type.String({ format: 'date-time' }),
-    deletedAt: __nullable__(Type.String({ format: 'date-time' })),
   },
   { additionalProperties: false }
 )
 
-export const VideoLinkRelations = Type.Object(
+export const AiSummaryRelations = Type.Object(
   {
     project: Type.Object(
       {
@@ -50,7 +54,7 @@ export const VideoLinkRelations = Type.Object(
   { additionalProperties: false }
 )
 
-export const VideoLinkWhere = Type.Partial(
+export const AiSummaryWhere = Type.Partial(
   Type.Recursive(
     (Self) =>
       Type.Object(
@@ -59,20 +63,24 @@ export const VideoLinkWhere = Type.Partial(
           NOT: Type.Union([Self, Type.Array(Self, { additionalProperties: false })]),
           OR: Type.Array(Self, { additionalProperties: false }),
           id: Type.String(),
-          url: Type.String(),
           projectId: Type.String(),
-          archived: Type.Boolean(),
+          style: Type.Union([Type.Literal('short'), Type.Literal('long')], {
+            additionalProperties: false,
+            description: `历史 AI 摘要（便于追溯不同模型/时间的结果）`,
+          }),
+          content: Type.String(),
+          model: Type.String(),
+          lang: Type.String(),
+          tokens: Type.Integer(),
           createdAt: Type.String({ format: 'date-time' }),
-          updatedAt: Type.String({ format: 'date-time' }),
-          deletedAt: Type.String({ format: 'date-time' }),
         },
         { additionalProperties: false }
       ),
-    { $id: 'VideoLink' }
+    { $id: 'AiSummary' }
   )
 )
 
-export const VideoLinkWhereUnique = Type.Recursive(
+export const AiSummaryWhereUnique = Type.Recursive(
   (Self) =>
     Type.Intersect(
       [
@@ -94,12 +102,16 @@ export const VideoLinkWhereUnique = Type.Recursive(
           Type.Object(
             {
               id: Type.String(),
-              url: Type.String(),
               projectId: Type.String(),
-              archived: Type.Boolean(),
+              style: Type.Union([Type.Literal('short'), Type.Literal('long')], {
+                additionalProperties: false,
+                description: `历史 AI 摘要（便于追溯不同模型/时间的结果）`,
+              }),
+              content: Type.String(),
+              model: Type.String(),
+              lang: Type.String(),
+              tokens: Type.Integer(),
               createdAt: Type.String({ format: 'date-time' }),
-              updatedAt: Type.String({ format: 'date-time' }),
-              deletedAt: Type.String({ format: 'date-time' }),
             },
             { additionalProperties: false }
           )
@@ -107,52 +119,56 @@ export const VideoLinkWhereUnique = Type.Recursive(
       ],
       { additionalProperties: false }
     ),
-  { $id: 'VideoLink' }
+  { $id: 'AiSummary' }
 )
 
-export const VideoLinkSelect = Type.Partial(
+export const AiSummarySelect = Type.Partial(
   Type.Object(
     {
       id: Type.Boolean(),
-      url: Type.Boolean(),
-      project: Type.Boolean(),
       projectId: Type.Boolean(),
-      archived: Type.Boolean(),
+      project: Type.Boolean(),
+      style: Type.Boolean(),
+      content: Type.Boolean(),
+      model: Type.Boolean(),
+      lang: Type.Boolean(),
+      tokens: Type.Boolean(),
       createdAt: Type.Boolean(),
-      updatedAt: Type.Boolean(),
-      deletedAt: Type.Boolean(),
       _count: Type.Boolean(),
     },
     { additionalProperties: false }
   )
 )
 
-export const VideoLinkInclude = Type.Partial(
-  Type.Object({ project: Type.Boolean(), _count: Type.Boolean() }, { additionalProperties: false })
+export const AiSummaryInclude = Type.Partial(
+  Type.Object(
+    { project: Type.Boolean(), style: Type.Boolean(), _count: Type.Boolean() },
+    { additionalProperties: false }
+  )
 )
 
-export const VideoLinkOrderBy = Type.Partial(
+export const AiSummaryOrderBy = Type.Partial(
   Type.Object(
     {
       id: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
         additionalProperties: false,
       }),
-      url: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
-        additionalProperties: false,
-      }),
       projectId: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
         additionalProperties: false,
       }),
-      archived: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
+      content: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
+        additionalProperties: false,
+      }),
+      model: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
+        additionalProperties: false,
+      }),
+      lang: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
+        additionalProperties: false,
+      }),
+      tokens: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
         additionalProperties: false,
       }),
       createdAt: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
-        additionalProperties: false,
-      }),
-      updatedAt: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
-        additionalProperties: false,
-      }),
-      deletedAt: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
         additionalProperties: false,
       }),
     },
@@ -160,6 +176,6 @@ export const VideoLinkOrderBy = Type.Partial(
   )
 )
 
-export const VideoLink = Type.Composite([VideoLinkPlain, VideoLinkRelations], {
+export const AiSummary = Type.Composite([AiSummaryPlain, AiSummaryRelations], {
   additionalProperties: false,
 })

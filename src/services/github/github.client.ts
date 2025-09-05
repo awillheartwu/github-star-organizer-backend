@@ -1,6 +1,6 @@
 import { Octokit } from '@octokit/rest'
 import { RequestError } from '@octokit/request-error'
-
+import type { Ctx } from '../../helpers/context.helper'
 // GitHub Star API 返回的元素（在 accept: star+json 下包含 starred_at）
 export interface GitHubStarredItem {
   starred_at?: string
@@ -16,7 +16,6 @@ export interface GitHubStarredItem {
     pushed_at: string | null
   }
 }
-
 export type FetchStarredResult = {
   items: GitHubStarredItem[]
   etag?: string
@@ -27,7 +26,6 @@ export type FetchStarredResult = {
   secondaryRateLimited?: boolean
   retryAfterSec?: number
 }
-
 export function createOctokit(token?: string, requestTimeoutMs?: number) {
   const octokit = new Octokit({
     auth: token,
@@ -38,7 +36,6 @@ export function createOctokit(token?: string, requestTimeoutMs?: number) {
   })
   return octokit
 }
-
 // 简单重试：针对网络瞬时错误与 5xx
 function getErrorCode(err: unknown): string | undefined {
   if (err && typeof err === 'object' && 'code' in err) {
@@ -47,7 +44,6 @@ function getErrorCode(err: unknown): string | undefined {
   }
   return undefined
 }
-
 async function withRetry<T>(
   fn: () => Promise<T>,
   opts?: { retries?: number; baseDelayMs?: number }
@@ -75,7 +71,6 @@ async function withRetry<T>(
   }
   throw lastErr
 }
-
 export async function fetchStarredPage(
   octokit: Octokit,
   params: {
@@ -92,7 +87,6 @@ export async function fetchStarredPage(
     accept: 'application/vnd.github.star+json',
   }
   if (etag) headers['If-None-Match'] = etag
-
   try {
     const res = await withRetry(() =>
       octokit.request('GET /users/{username}/starred', {
@@ -103,11 +97,9 @@ export async function fetchStarredPage(
         request: { signal },
       })
     )
-
     const remaining = Number(res.headers['x-ratelimit-remaining'] || '0')
     const reset = Number(res.headers['x-ratelimit-reset'] || '0')
     const nextEtag = res.headers['etag']
-
     return {
       items: res.data as unknown as GitHubStarredItem[],
       etag: typeof nextEtag === 'string' ? nextEtag : undefined,
@@ -151,7 +143,6 @@ export async function fetchStarredPage(
     throw err
   }
 }
-
 // 轻量预检：仅取第一页 1 条，用于快速命中 304 或拿到顶部 cursor
 export async function fetchFirstStarPage(
   octokit: Octokit,
@@ -165,7 +156,6 @@ export async function fetchFirstStarPage(
     signal: params.signal,
   })
 }
-
 export async function* iterateStarred(
   octokit: Octokit,
   params: {
@@ -196,5 +186,18 @@ export async function* iterateStarred(
     yield res
     if (!res.items?.length) break
     page += 1
+  }
+}
+// ---- Repo content helpers ----
+// 获取仓库 README（raw 文本），fullName 形如 'owner/repo'
+export async function getRepoReadmeRawByFullName(ctx: Ctx, fullName: string): Promise<string> {
+  const [owner, repo] = fullName.split('/')
+  if (!owner || !repo) return ''
+  const octokit = new Octokit(ctx.config.githubToken ? { auth: ctx.config.githubToken } : undefined)
+  try {
+    const res = await octokit.repos.getReadme({ owner, repo, mediaType: { format: 'raw' } })
+    return typeof res.data === 'string' ? (res.data as unknown as string) : ''
+  } catch {
+    return ''
   }
 }

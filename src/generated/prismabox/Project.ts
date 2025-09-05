@@ -23,6 +23,8 @@ export const ProjectPlain = Type.Object(
     archived: Type.Boolean(),
     pinned: Type.Boolean(),
     score: __nullable__(Type.Integer()),
+    summaryShort: __nullable__(Type.String()),
+    summaryLong: __nullable__(Type.String()),
     createdAt: Type.String({ format: 'date-time' }),
     updatedAt: Type.String({ format: 'date-time' }),
     deletedAt: __nullable__(Type.String({ format: 'date-time' })),
@@ -50,6 +52,25 @@ export const ProjectRelations = Type.Object(
     tags: Type.Array(
       Type.Object(
         { projectId: Type.String(), tagId: Type.String() },
+        { additionalProperties: false }
+      ),
+      { additionalProperties: false }
+    ),
+    AiSummary: Type.Array(
+      Type.Object(
+        {
+          id: Type.String(),
+          projectId: Type.String(),
+          style: Type.Union([Type.Literal('short'), Type.Literal('long')], {
+            additionalProperties: false,
+            description: `历史 AI 摘要（便于追溯不同模型/时间的结果）`,
+          }),
+          content: Type.String(),
+          model: __nullable__(Type.String()),
+          lang: __nullable__(Type.String()),
+          tokens: __nullable__(Type.Integer()),
+          createdAt: Type.String({ format: 'date-time' }),
+        },
         { additionalProperties: false }
       ),
       { additionalProperties: false }
@@ -83,6 +104,8 @@ export const ProjectWhere = Type.Partial(
           archived: Type.Boolean(),
           pinned: Type.Boolean(),
           score: Type.Integer(),
+          summaryShort: Type.String(),
+          summaryLong: Type.String(),
           createdAt: Type.String({ format: 'date-time' }),
           updatedAt: Type.String({ format: 'date-time' }),
           deletedAt: Type.String({ format: 'date-time' }),
@@ -136,6 +159,8 @@ export const ProjectWhereUnique = Type.Recursive(
               archived: Type.Boolean(),
               pinned: Type.Boolean(),
               score: Type.Integer(),
+              summaryShort: Type.String(),
+              summaryLong: Type.String(),
               createdAt: Type.String({ format: 'date-time' }),
               updatedAt: Type.String({ format: 'date-time' }),
               deletedAt: Type.String({ format: 'date-time' }),
@@ -170,10 +195,13 @@ export const ProjectSelect = Type.Partial(
       pinned: Type.Boolean(),
       score: Type.Boolean(),
       videoLinks: Type.Boolean(),
+      summaryShort: Type.Boolean(),
+      summaryLong: Type.Boolean(),
       tags: Type.Boolean(),
       createdAt: Type.Boolean(),
       updatedAt: Type.Boolean(),
       deletedAt: Type.Boolean(),
+      AiSummary: Type.Boolean(),
       _count: Type.Boolean(),
     },
     { additionalProperties: false }
@@ -185,6 +213,7 @@ export const ProjectInclude = Type.Partial(
     {
       videoLinks: Type.Boolean(),
       tags: Type.Boolean(),
+      AiSummary: Type.Boolean(),
       _count: Type.Boolean(),
     },
     { additionalProperties: false }
@@ -243,6 +272,12 @@ export const ProjectOrderBy = Type.Partial(
         additionalProperties: false,
       }),
       score: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
+        additionalProperties: false,
+      }),
+      summaryShort: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
+        additionalProperties: false,
+      }),
+      summaryLong: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
         additionalProperties: false,
       }),
       createdAt: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {

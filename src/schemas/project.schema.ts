@@ -1,5 +1,4 @@
 import { Type } from '@sinclair/typebox'
-import { Project } from '../generated/prismabox/Project'
 
 export const ProjectQuerySchema = Type.Object(
   {
@@ -44,14 +43,52 @@ export const ProjectQuerySchema = Type.Object(
   { additionalProperties: false }
 )
 
+// —— 与 controller 返回的 DTO 对齐 —— //
+const TagSummary = Type.Object({
+  id: Type.String(),
+  name: Type.String(),
+  description: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+})
+
+export const ProjectDtoSchema = Type.Object(
+  {
+    id: Type.String(),
+    githubId: Type.Integer(),
+    name: Type.String(),
+    fullName: Type.String(),
+    url: Type.String(),
+    description: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+    language: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+    stars: Type.Integer(),
+    forks: Type.Integer(),
+    lastCommit: Type.Optional(Type.Union([Type.String({ format: 'date-time' }), Type.Null()])),
+    lastSyncAt: Type.String({ format: 'date-time' }),
+    touchedAt: Type.Optional(Type.Union([Type.String({ format: 'date-time' }), Type.Null()])),
+    notes: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+    favorite: Type.Boolean(),
+    archived: Type.Boolean(),
+    pinned: Type.Boolean(),
+    score: Type.Optional(Type.Union([Type.Integer(), Type.Null()])),
+    // 新增的冗余摘要字段（可选）
+    summaryShort: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+    summaryLong: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+    createdAt: Type.String({ format: 'date-time' }),
+    updatedAt: Type.String({ format: 'date-time' }),
+    deletedAt: Type.Optional(Type.Union([Type.String({ format: 'date-time' }), Type.Null()])),
+    tags: Type.Array(TagSummary),
+    videoLinks: Type.Array(Type.String()),
+  },
+  { additionalProperties: false }
+)
+
 export const BaseProjectResponseSchema = Type.Object({
   message: Type.String(),
-  data: Project,
+  data: ProjectDtoSchema,
 })
 
 export const ProjectListResponseSchema = Type.Object({
   message: Type.String(),
-  data: Type.Array(Project),
+  data: Type.Array(ProjectDtoSchema),
   page: Type.Number(),
   pageSize: Type.Number(),
   total: Type.Number(),
