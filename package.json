@@ -6,6 +6,9 @@
   "main": "main.ts",
   "scripts": {
     "test": "jest --config test/jest.json --runInBand --passWithNoTests --forceExit",
+    "test:coverage": "jest --config test/jest.json --coverage --runInBand --passWithNoTests --forceExit",
+    "test:coverage:html": "jest --config test/jest.json --coverage --runInBand --passWithNoTests --forceExit && open coverage/index.html",
+    "test:watch": "jest --config test/jest.json --runInBand --passWithNoTests --watch",
     "dev": "dotenv -e .env.development -- tsx watch ./src/main.ts | pino-pretty --colorize",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/main.js",

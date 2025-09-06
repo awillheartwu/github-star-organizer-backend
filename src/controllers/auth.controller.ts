@@ -79,7 +79,17 @@ export async function refresh(req: FastifyRequest, reply: FastifyReply) {
     )
   }
 
-  await req.refreshVerify() // 验签（refresh 命名空间）
+  // 验签（refresh 命名空间）；失败时规范化为 401
+  try {
+    await req.refreshVerify()
+  } catch (e) {
+    throw new AppError(
+      'Invalid refresh token',
+      HTTP_STATUS.UNAUTHORIZED.statusCode,
+      ERROR_TYPES.UNAUTHORIZED,
+      { cause: e }
+    )
+  }
   const record = await authService.assertRefreshValid(ctx, token)
 
   const newJti = authService.genJti()

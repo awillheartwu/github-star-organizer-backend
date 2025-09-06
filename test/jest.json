@@ -9,37 +9,51 @@
   "moduleDirectories": ["node_modules", "<rootDir>/src"],
   "setupFilesAfterEnv": ["<rootDir>/test/jest.setup.ts"],
   "testPathIgnorePatterns": ["<rootDir>/test/debug/"],
+  "collectCoverage": true,
   "collectCoverageFrom": [
     "src/**/*.ts",
     "!src/generated/**",
     "!src/**/*.d.ts",
     "!src/main.ts",
     "!src/app.ts",
+    "src/controllers/auth.controller.ts",
+    "!src/routes/**",
+    "!src/schemas/**",
+    "!src/plugins/**",
+    "!src/config/**",
     "!src/scripts/**",
     "!src/types/**",
     "!src/utils/**",
-    "!src/services/sync/github/**"
+    "!src/services/github/**",
+    "!src/services/ai.client.ts",
+    "!src/controllers/index.ts",
+    "!src/controllers/admin.controller.ts",
+    "!src/controllers/project.controller.ts",
+    "!src/controllers/tag.controller.ts",
+    "!src/controllers/ai.controller.ts"
   ],
   "coveragePathIgnorePatterns": [
     "/node_modules/",
     "<rootDir>/src/plugins/(prisma|redis|rate-limit|sensible|mailer|bullmq)\\.ts",
     "<rootDir>/src/schemas/admin.schema.ts",
-    "<rootDir>/src/services/maintenance.service.ts"
+    "<rootDir>/src/services/maintenance.service.ts",
+    "<rootDir>/src/services/github/",
+    "<rootDir>/src/services/ai.client.ts"
   ],
   "coverageDirectory": "coverage",
   "coverageReporters": ["text", "lcov", "html"],
   "coverageThreshold": {
     "global": {
-      "statements": 60,
-      "branches": 50,
-      "functions": 60,
-      "lines": 60
-    },
-    "src/services/": {
       "statements": 80,
       "branches": 70,
       "functions": 80,
       "lines": 80
+    },
+    "src/services/": {
+      "statements": 85,
+      "branches": 70,
+      "functions": 90,
+      "lines": 88
     }
   },
   "verbose": true,

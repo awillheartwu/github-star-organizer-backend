@@ -34,4 +34,32 @@ describe('handleServerError', () => {
     expect(rec.status).toBe(400)
     expect(rec.payload).toMatchObject({ errorType: 'ValidationError' })
   })
+
+  test('maps Prisma unique constraint (P2002) to 409 with friendly message', () => {
+    const { reply, rec } = makeReply()
+    // Simulate Prisma error object shape
+    handleServerError(reply, { code: 'P2002', meta: { target: 'email' } })
+    expect(rec.status).toBe(409)
+    expect(rec.payload).toMatchObject({
+      code: 409,
+      errorType: 'PrismaUniqueError',
+    })
+  })
+
+  test('generic error hides details when not in development', () => {
+    const { reply, rec } = makeReply()
+    const old = process.env.NODE_ENV
+    process.env.NODE_ENV = 'test'
+    handleServerError(reply, new Error('secret details'))
+    process.env.NODE_ENV = old
+    expect(rec.status).toBe(500)
+    // Should not leak original message in non-development env
+    const payload = rec.payload
+    if (typeof payload === 'object' && payload !== null && 'message' in payload) {
+      const msg = (payload as { message: string }).message
+      expect(msg).toContain('Internal Server Error')
+    } else {
+      throw new Error('unexpected payload shape')
+    }
+  })
 })

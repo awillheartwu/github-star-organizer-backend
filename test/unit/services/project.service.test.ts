@@ -208,6 +208,34 @@ describe('ProjectService', () => {
       expect(onlyOld.data.some((x) => x.name === 'vue-project')).toBe(true)
     })
 
+    it('should filter by updatedAt range', async () => {
+      const old = new Date('2020-01-01T00:00:00Z')
+      const recent = new Date()
+      const p = await prisma.project.findFirst({ where: { name: 'react-app' } })
+      await prisma.project.update({ where: { id: p!.id }, data: { updatedAt: old } })
+
+      const onlyRecent = await ProjectService.getProjectsService(ctx, {
+        updatedAtStart: new Date(recent.getTime() - 1000).toISOString(),
+        offset: 0,
+        limit: 10,
+      })
+      expect(
+        onlyRecent.data.every((x) => new Date(x.updatedAt) >= new Date(recent.getTime() - 1000))
+      ).toBe(true)
+    })
+
+    it('should support ordering by stars desc', async () => {
+      const result = await ProjectService.getProjectsService(ctx, {
+        orderBy: 'stars',
+        orderDirection: 'desc',
+        offset: 0,
+        limit: 10,
+      })
+      const stars = result.data.map((p) => p.stars)
+      const sorted = [...stars].sort((a, b) => b - a)
+      expect(stars).toEqual(sorted)
+    })
+
     it('should support languages array filter', async () => {
       const result = await ProjectService.getProjectsService(ctx, {
         languages: ['JavaScript'],
@@ -364,6 +392,29 @@ describe('ProjectService', () => {
       })
       expect(aRow?.archived).toBe(true)
       expect(aRow?.deletedAt).not.toBeNull()
+    })
+
+    it('should update tags by name (add and remove)', async () => {
+      // seed initial tags
+      const t1 = await prisma.tag.create({ data: { name: 't1' } })
+      const t2 = await prisma.tag.create({ data: { name: 't2' } })
+      await prisma.projectTag.createMany({
+        data: [
+          { projectId: testProject.id, tagId: t1.id },
+          { projectId: testProject.id, tagId: t2.id },
+        ],
+      })
+
+      const result = await ProjectService.updateProjectService(ctx, testProject.id, {
+        tags: [{ name: 't1' }, { name: 't3' }],
+      })
+
+      const names = result.tags.map((t) => t.name).sort()
+      expect(names).toEqual(['t1', 't3'])
+      // ensure removed tag was disassociated
+      const remaining = await prisma.projectTag.findMany({ where: { projectId: testProject.id } })
+      const joined = remaining.map((r) => r.tagId).sort()
+      expect(joined.length).toBe(2)
     })
   })
 

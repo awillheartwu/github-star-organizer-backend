@@ -2,9 +2,12 @@
 import Fastify, { FastifyInstance } from 'fastify'
 import configPlugin from '../../src/plugins/config'
 import authPlugin from '../../src/plugins/auth'
+import { handleServerError } from '../../src/helpers/error.helper'
 import authRoutes from '../../src/routes/auth.router'
 import projectRoutes from '../../src/routes/project.router'
 import tagRoutes from '../../src/routes/tag.router'
+import adminRoutes from '../../src/routes/admin.router'
+import aiRoutes from '../../src/routes/ai.router'
 import { TestDatabase } from './database.helper'
 import type { Redis } from 'ioredis'
 
@@ -34,6 +37,8 @@ export async function buildTestApp(): Promise<FastifyInstance> {
   const prisma = await TestDatabase.setup()
 
   const app = Fastify({ logger: false })
+  // 注册统一错误处理，保证 E2E 返回与生产一致的结构/状态码
+  app.setErrorHandler((err, _req, reply) => handleServerError(reply, err))
 
   // 装配必须插件（顺序：config → 自定义注入 prisma/redis → auth → 路由）
   await app.register(configPlugin)
@@ -45,10 +50,12 @@ export async function buildTestApp(): Promise<FastifyInstance> {
   // 鉴权与 cookie/jwt
   await app.register(authPlugin)
 
-  // 注册路由：auth、project、tag
+  // 注册路由：auth、project、tag、admin、ai（E2E 冒烟需要）
   await app.register(authRoutes)
   await app.register(projectRoutes)
   await app.register(tagRoutes)
+  await app.register(adminRoutes)
+  await app.register(aiRoutes)
 
   await app.ready()
   return app
