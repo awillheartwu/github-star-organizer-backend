@@ -6,6 +6,7 @@ import { ERROR_TYPES, HTTP_STATUS } from '../constants/errorCodes'
 import { SYNC_SOURCE_GITHUB_STARS, buildGithubStarsKey, getState } from './sync.state.service'
 import { createHash } from 'node:crypto'
 
+/** @internal 为手动同步参数生成短哈希（用于构建幂等 jobId） */
 function hashOptions(opts: SyncJobData['options']) {
   const plain = JSON.stringify({
     mode: opts.mode,
@@ -16,6 +17,18 @@ function hashOptions(opts: SyncJobData['options']) {
   return createHash('sha1').update(plain).digest('hex').slice(0, 8)
 }
 
+/**
+ * 将手动 GitHub Stars 同步任务加入队列：
+ * - 根据参数生成幂等 jobId，如果已有未完成任务则冲突
+ * - 任务附带可选 note，用于审计/追踪
+ *
+ * @param ctx 上下文
+ * @param queue BullMQ 队列实例
+ * @param body 同步选项（mode/perPage/maxPages/softDeleteUnstarred + note）
+ * @returns jobId 字符串
+ * @throws {AppError} 已有同参数进行中的任务 (409)
+ * @category Admin
+ */
 export async function enqueueSyncStarsService(
   ctx: Ctx,
   queue: Queue<SyncJobData, SyncStats>,
@@ -56,6 +69,11 @@ export async function enqueueSyncStarsService(
   return String(job.id)
 }
 
+/**
+ * 获取 GitHub Stars 同步状态摘要（最近运行信息、错误、统计等）。
+ * @throws {AppError} 状态不存在 (404)
+ * @category Admin
+ */
 export async function getSyncStateSummaryService(ctx: Ctx) {
   const source = SYNC_SOURCE_GITHUB_STARS
   const key = buildGithubStarsKey(ctx.config.githubUsername)
@@ -79,6 +97,13 @@ export async function getSyncStateSummaryService(ctx: Ctx) {
 }
 
 // —— 归档只读列表 —— //
+/**
+ * 分页列出已归档项目（来源：手动删除或同步检测 unstarred）。
+ * @param ctx 上下文
+ * @param query 分页与过滤（reason、offset、limit）
+ * @returns 分页结果（data/page/pageSize/total）
+ * @category Admin
+ */
 export async function listArchivedProjectsService(
   ctx: Ctx,
   query: { page?: number; pageSize?: number; reason?: 'manual' | 'unstarred' } & {
@@ -107,6 +132,11 @@ export async function listArchivedProjectsService(
   }
 }
 
+/**
+ * 获取归档项目快照详情。
+ * @throws {AppError} 未找到 (404)
+ * @category Admin
+ */
 export async function getArchivedProjectByIdService(ctx: Ctx, id: string) {
   const row = await ctx.prisma.archivedProject.findUnique({
     where: { id },

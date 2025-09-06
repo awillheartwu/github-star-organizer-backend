@@ -4,6 +4,20 @@ import { generateWithProvider, type AiClientOptions } from './ai.client'
 import { AppError } from '../helpers/error.helper'
 import { HTTP_STATUS, ERROR_TYPES } from '../constants/errorCodes'
 
+/**
+ * 生成指定项目的 AI 摘要，并可选创建/关联标签与落库历史。
+ *
+ * - 会优先使用结构化（function-call）输出，失败则回退到传统 JSON 文本解析。
+ * - 写入 AiSummary 历史，并把最新摘要冗余到 Project.summaryShort/summaryLong。
+ * - 若 createTags = true，会对 tags 做清洗（去重/小写/长度约束）并附加到项目。
+ *
+ * @param ctx - 上下文（prisma/log/config/redis）
+ * @param projectId - 目标项目 ID（UUID）
+ * @param options - 风格/语言/模型/温度/是否创建标签/是否包含 README 等
+ * @throws AppError - 当项目不存在/已归档或 AI 返回无效 JSON 时
+ * @returns 最新摘要、模型、语言以及本次创建/关联的标签集合
+ * @category AI
+ */
 export async function summarizeProject(
   ctx: Ctx,
   projectId: string,
@@ -119,6 +133,7 @@ export async function summarizeProject(
   }
 }
 
+/** @internal 项目信息上下文（构建提示语的最小子集） */
 type ProjectContext = {
   name: string
   fullName?: string
@@ -129,6 +144,7 @@ type ProjectContext = {
   forks: number
 }
 
+/** @internal 构建提示语（仅供内部 summarizeProject 使用） */
 function buildPrompt(
   ctx: ProjectContext,
   lang: 'zh' | 'en',
@@ -194,10 +210,7 @@ ${context}`,
 
 type AiSummaryPayload = { short?: unknown; long?: unknown; tags?: unknown }
 
-// 尝试从模型返回的文本中解析出 JSON：
-// 1) 直接 JSON.parse
-// 2) 去掉 ```json\n...``` 栅栏后再 parse
-// 3) 从文本中提取首个平衡的大括号 JSON 对象再 parse（容错）
+/** @internal 解析与容错 JSON */
 function safeParseJson(text: string): AiSummaryPayload | null {
   const direct = tryJson(text)
   if (direct) return direct
@@ -217,6 +230,7 @@ function safeParseJson(text: string): AiSummaryPayload | null {
   return null
 }
 
+/** @internal */
 function tryJson(s: string): AiSummaryPayload | null {
   try {
     // 移除 BOM 与前后空白
@@ -227,7 +241,7 @@ function tryJson(s: string): AiSummaryPayload | null {
   }
 }
 
-// 从给定文本中提取首个平衡的 JSON 对象（不处理数组/复杂场景，但足够应对常见包裹输出）
+/** @internal 从文本中提取首个 JSON 对象 */
 function extractFirstJsonObject(s: string): string | null {
   const i = s.indexOf('{')
   if (i === -1) return null
@@ -258,6 +272,7 @@ function extractFirstJsonObject(s: string): string | null {
   return null
 }
 
+/** @internal 写入摘要历史 */
 async function insertHistory(
   ctx: Ctx,
   projectId: string,
@@ -286,6 +301,7 @@ async function insertHistory(
   })
 }
 
+/** @internal 标签清洗并附加 */
 async function attachTags(ctx: Ctx, projectId: string, names: string[]) {
   const cleaned = Array.from(
     new Set(names.map((s) => s.trim().toLowerCase()).filter((s) => s && s.length <= 32))
@@ -320,7 +336,7 @@ async function attachTags(ctx: Ctx, projectId: string, names: string[]) {
   return { created: toCreate, linked: cleaned }
 }
 
-// —— GitHub README 获取（带缓存） —— //
+/** @internal 缓存读取 README */
 async function getReadmeWithCache(ctx: Ctx, fullName: string): Promise<string> {
   const cacheKey = `gh:readme:${fullName}`
   try {
@@ -341,6 +357,7 @@ async function getReadmeWithCache(ctx: Ctx, fullName: string): Promise<string> {
   return text
 }
 
+/** @internal 真实获取 README（测试环境短路） */
 async function fetchReadmeRaw(ctx: Ctx, fullName: string): Promise<string> {
   // 单元测试环境下跳过外部依赖，避免引入 ESM 模块/网络请求
   if (process.env.NODE_ENV === 'test') return ''
@@ -348,6 +365,7 @@ async function fetchReadmeRaw(ctx: Ctx, fullName: string): Promise<string> {
   return mod.getRepoReadmeRawByFullName(ctx, fullName)
 }
 
+/** @internal 粗暴移除 markdown/HTML 噪音 */
 function stripAndTrimReadme(md: string): string {
   // remove code fences
   let s = md.replace(/```[\s\S]*?```/g, '')

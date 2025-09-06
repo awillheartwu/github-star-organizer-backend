@@ -1,7 +1,10 @@
 import { Octokit } from '@octokit/rest'
 import { RequestError } from '@octokit/request-error'
 import type { Ctx } from '../../helpers/context.helper'
-// GitHub Star API 返回的元素（在 accept: star+json 下包含 starred_at）
+/**
+ * GitHub Stars API 返回的单条记录（在 `accept: application/vnd.github.star+json` 下包含 `starred_at`）。
+ * @category GitHub
+ */
 export interface GitHubStarredItem {
   starred_at?: string
   repo: {
@@ -16,6 +19,12 @@ export interface GitHubStarredItem {
     pushed_at: string | null
   }
 }
+/**
+ * 抓取 stars 页结果封装。
+ * - `notModified` 表示 ETag 命中（items 为空）
+ * - 403 + `secondaryRateLimited` 表示触发二级限流，可用 `retryAfterSec` 做退避
+ * @category GitHub
+ */
 export type FetchStarredResult = {
   items: GitHubStarredItem[]
   etag?: string
@@ -26,6 +35,12 @@ export type FetchStarredResult = {
   secondaryRateLimited?: boolean
   retryAfterSec?: number
 }
+/**
+ * 创建 Octokit 客户端，支持可选 token 及 request 超时。
+ * @param token GitHub 令牌（可选）
+ * @param requestTimeoutMs 请求超时（ms）
+ * @category GitHub
+ */
 export function createOctokit(token?: string, requestTimeoutMs?: number) {
   const octokit = new Octokit({
     auth: token,
@@ -36,7 +51,7 @@ export function createOctokit(token?: string, requestTimeoutMs?: number) {
   })
   return octokit
 }
-// 简单重试：针对网络瞬时错误与 5xx
+/** @internal 简单获取错误 code（网络层） */
 function getErrorCode(err: unknown): string | undefined {
   if (err && typeof err === 'object' && 'code' in err) {
     const c = (err as { code?: unknown }).code
@@ -44,6 +59,9 @@ function getErrorCode(err: unknown): string | undefined {
   }
   return undefined
 }
+/**
+ * @internal 轻量指数退避重试（网络瞬时错误 & 5xx）。
+ */
 async function withRetry<T>(
   fn: () => Promise<T>,
   opts?: { retries?: number; baseDelayMs?: number }
@@ -71,6 +89,11 @@ async function withRetry<T>(
   }
   throw lastErr
 }
+/**
+ * 抓取指定页的 starred 仓库列表，支持 ETag 条件请求。
+ * @returns 包含分页 items / 限流信息 / ETag / 状态。
+ * @category GitHub
+ */
 export async function fetchStarredPage(
   octokit: Octokit,
   params: {
@@ -143,7 +166,10 @@ export async function fetchStarredPage(
     throw err
   }
 }
-// 轻量预检：仅取第一页 1 条，用于快速命中 304 或拿到顶部 cursor
+/**
+ * 轻量预检：抓取第一页 1 条，用于快速命中 304 或获取最新 ETag。
+ * @category GitHub
+ */
 export async function fetchFirstStarPage(
   octokit: Octokit,
   params: { username: string; etag?: string; signal?: AbortSignal }
@@ -156,6 +182,11 @@ export async function fetchFirstStarPage(
     signal: params.signal,
   })
 }
+/**
+ * 迭代抓取用户所有已 star 仓库（支持 maxPages 限制 & ETag 首页条件请求）。
+ * 当 `abortOnNotModified` 且命中 304 时提前结束。
+ * @category GitHub
+ */
 export async function* iterateStarred(
   octokit: Octokit,
   params: {
@@ -189,7 +220,10 @@ export async function* iterateStarred(
   }
 }
 // ---- Repo content helpers ----
-// 获取仓库 README（raw 文本），fullName 形如 'owner/repo'
+/**
+ * 获取仓库 README 原始文本（fullName = owner/repo）。失败返回空字符串。
+ * @category GitHub
+ */
 export async function getRepoReadmeRawByFullName(ctx: Ctx, fullName: string): Promise<string> {
   const [owner, repo] = fullName.split('/')
   if (!owner || !repo) return ''

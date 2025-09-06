@@ -3,6 +3,21 @@ import { Ctx } from '../helpers/context.helper'
 import { AppError } from '../helpers/error.helper'
 import { HTTP_STATUS, ERROR_TYPES } from '../constants/errorCodes'
 
+/**
+ * 变更用户角色并强制使现有会话失效：
+ * 1. 更新 `user.role`
+ * 2. 撤销用户全部有效 RefreshToken
+ * 3. tokenVersion 自增 & 写入 Redis，确保已签发 AccessToken 立即失效
+ *
+ * 安全考量：角色提升/降级需让既有访问权限即时过期。
+ *
+ * @param ctx 上下文
+ * @param userId 用户 ID
+ * @param role 目标角色
+ * @throws {AppError} 用户不存在 (404)
+ * @returns `{ ok: true }`
+ * @category User
+ */
 export async function setUserRole(ctx: Ctx, userId: string, role: 'USER' | 'ADMIN') {
   const user = await ctx.prisma.user.findUnique({ where: { id: userId } })
   if (!user) {

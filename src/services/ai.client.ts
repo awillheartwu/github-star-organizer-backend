@@ -1,12 +1,23 @@
 // src/services/ai.client.ts
 import type { AppConfig } from '../config'
 
+/**
+ * AI 响应的通用结构（对上层仅暴露结构化文本与用量信息）。
+ * @category AI
+ */
 export type AiCompletion = {
   content: string
   model?: string
   usage?: { promptTokens?: number; completionTokens?: number; totalTokens?: number }
 }
 
+/**
+ * AI 客户端调用选项。
+ * - structured: 启用结构化输出（优先 function-call，失败回退 response_format）
+ * - jsonSchema: 结构化输出所遵循的 JSON Schema
+ * - functionName: function-call 的函数名
+ * @category AI
+ */
 export interface AiClientOptions {
   model?: string
   temperature?: number
@@ -27,8 +38,17 @@ type DeepSeekResponse = {
 
 /**
  * 调用真实 AI Provider（当前实现 DeepSeek Chat Completions）。
- * - 统一读取 `cfg.aiApiKey`
- * - 支持 retries（429/5xx 指数退避）与超时
+ *
+ * 行为说明：
+ * 1. 当 opts.structured = true 时，优先走 tools/function 调用；若 4xx 失败，则回退到 response_format: json_object。
+ * 2. 两者都失败时，按 429/5xx 做指数退避重试，最终抛错。
+ * 3. 成功时优先解析 tool_calls[0].function.arguments，缺失再读取 message.content。
+ *
+ * @param cfg - 应用配置（读取 aiApiKey、默认模型与温度）
+ * @param prompt - 已经拼装好的用户提示词
+ * @param opts - 调用选项（模型/温度/结构化偏好/JSON Schema 等）
+ * @returns {Promise<AiCompletion>} 结构化文本与可选的用量
+ * @category AI
  */
 export async function generateWithProvider(
   cfg: AppConfig,

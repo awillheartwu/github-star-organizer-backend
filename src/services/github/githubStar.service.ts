@@ -11,7 +11,7 @@ import {
   markSuccess,
   touchRun,
 } from '../sync.state.service'
-// 将 GitHub starred 项映射为 Project 的数据结构
+/** @internal 将 GitHub starred 项映射为 Project 的数据结构 */
 function mapToProjectData(item: GitHubStarredItem) {
   const r = item.repo
   return {
@@ -28,7 +28,7 @@ function mapToProjectData(item: GitHubStarredItem) {
     touchedAt: new Date(),
   }
 }
-// 比较需要更新的字段，返回差异补丁（无差异则为空对象）
+/** @internal 比较需要更新的字段，返回差异补丁（无差异则为空对象） */
 function diffProject(existing: Record<string, unknown>, incoming: Record<string, unknown>) {
   const patch: Record<string, unknown> = {}
   const keys = [
@@ -55,6 +55,26 @@ function diffProject(existing: Record<string, unknown>, incoming: Record<string,
   }
   return patch
 }
+/**
+ * 处理 GitHub 星标同步任务：支持全量(full)与增量(incremental)两种模式。
+ *
+ * 流程概述：
+ * 1. 读取/初始化 SyncState（cursor/etag）并标记开始
+ * 2. 增量模式先做 1 条轻量预检（命中 304 则快速返回）
+ * 3. 迭代抓取 stars（ETag + cursor 控制提前停止）
+ * 4. 每条记录 upsert：不存在则创建，存在做字段差异比对（仅必要字段更新）
+ * 5. 全量模式且遍历到末尾时，可选软删除（实际实现为归档+删除）未再出现的项目
+ * 6. 汇总统计并更新 SyncState（cursor=最新 starred_at；etag=首页 ETag）
+ *
+ * 速率限制：若遇 secondary rate limit(403) 抛错交由队列重试；记录剩余配额。
+ * 幂等性：通过 githubId 唯一约束避免重复创建；增量以 cursor/etag 截断。
+ *
+ * @param ctx 上下文
+ * @param data BullMQ 任务数据（包含同步选项）
+ * @returns 同步统计信息
+ * @throws 任意底层错误（会被 BullMQ 捕获进行重试/告警）
+ * @category GitHub
+ */
 export async function handleSyncStarsJob(ctx: Ctx, data: SyncJobData): Promise<SyncStats> {
   const startedAt = new Date()
   const { options } = data

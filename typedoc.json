@@ -1,21 +1,33 @@
 {
+  // 更聚焦于对外可复用的业务/工具层，避免暴露交付层(controller)
   "entryPoints": [
-    "src/controllers/**/*.ts",
     "src/services/**/*.ts",
-    "src/helpers/**/*.ts"
+    "src/helpers/**/*.ts",
+    "src/constants/**/*.ts"
   ],
+  // 过滤内部实现、脚本、生成代码、同步/外部 client、测试等
   "exclude": [
     "src/generated/**",
     "src/scripts/**",
-    "src/types/**",
+    "src/types/internal/**",
     "src/utils/**",
     "src/plugins/**",
+    "src/services/sync/github/**",
+    "src/services/ai.client.ts",
+    "test/**",
+    "**/*.test.ts",
+    "**/*.spec.ts",
     "**/*.d.ts"
   ],
   "tsconfig": "./tsconfig.typedoc.json",
   "out": "docs/typedoc",
+  "readme": "docs/typedoc-intro.md",
   "excludePrivate": true,
   "excludeProtected": true,
+  "excludeInternal": true,
+  "categorizeByGroup": true,
+  "includeVersion": true,
+  "sort": ["source-order", "alphabetical"],
   "hideGenerator": true,
   "skipErrorChecking": true
 }

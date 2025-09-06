@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify'
 import type { SyncStats } from '../types/sync.types'
 import type { AppConfig } from '../config'
 
+/** @internal 从未知错误对象提取可读 message */
 function errorMessage(err: unknown): string {
   if (err instanceof Error) return err.message
   if (typeof err === 'object' && err && 'message' in err) {
@@ -11,6 +12,13 @@ function errorMessage(err: unknown): string {
   return String(err)
 }
 
+/**
+ * 发送同步成功通知邮件。
+ * @param app Fastify 实例（含 mailer & config）
+ * @param jobId 任务 ID
+ * @param stats 同步统计
+ * @category Notification
+ */
 export async function sendSyncCompleted(
   app: FastifyInstance,
   jobId: string | number,
@@ -32,6 +40,11 @@ export async function sendSyncCompleted(
   await app.mailer.send({ to, subject, text, html })
 }
 
+/**
+ * 发送同步失败通知邮件。
+ * @param err 错误对象
+ * @category Notification
+ */
 export async function sendSyncFailed(app: FastifyInstance, jobId: string | number, err: unknown) {
   if (!app.config.notifyEmailEnabled) return
   const to = (app.config.mailTo || '')
@@ -62,6 +75,10 @@ type BullCleanSummary = {
   removedRepeatables: number
 }
 
+/**
+ * 发送维护清理成功报告邮件（RefreshToken + BullMQ）。
+ * @category Notification
+ */
 export async function sendMaintenanceCompleted(
   app: FastifyInstance,
   jobId: string | number,
@@ -87,6 +104,10 @@ export async function sendMaintenanceCompleted(
   await app.mailer.send({ to, subject, text, html })
 }
 
+/**
+ * 发送维护任务失败通知。
+ * @category Notification
+ */
 export async function sendMaintenanceFailed(
   app: FastifyInstance,
   jobId: string | number,
@@ -105,6 +126,7 @@ export async function sendMaintenanceFailed(
 }
 
 // ---- HTML templates ----
+/** @internal 邮件 HTML 外壳模板 */
 function renderShell(body: string, title = 'GitHub Stars Notification') {
   return `<!doctype html>
 <html>
@@ -134,6 +156,7 @@ function renderShell(body: string, title = 'GitHub Stars Notification') {
 </html>`
 }
 
+/** @internal 构建同步成功 HTML */
 function renderCompletedHtml(jobId: string | number, s: SyncStats) {
   const body = `
   <div class="header">Sync Completed <span class="ok">• success</span></div>
@@ -157,6 +180,7 @@ function renderCompletedHtml(jobId: string | number, s: SyncStats) {
   return renderShell(body, 'Sync completed')
 }
 
+/** @internal 构建维护成功 HTML */
 function renderMaintenanceHtml(
   jobId: string | number,
   rt: RtCleanSummary,
@@ -191,6 +215,7 @@ function renderMaintenanceHtml(
   return renderShell(body, 'Daily Maintenance')
 }
 
+/** @internal 构建失败通知 HTML */
 function renderFailedHtml(jobId: string | number, message: string) {
   const body = `
   <div class="header">Sync Failed <span class="fail">• error</span></div>
@@ -204,10 +229,12 @@ function renderFailedHtml(jobId: string | number, message: string) {
   return renderShell(body, 'Sync failed')
 }
 
+/** @internal HTML 表格行辅助 */
 function tr(key: string, val: unknown) {
   return `<tr><th>${escapeHtml(key)}</th><td>${escapeHtml(String(val))}</td></tr>`
 }
 
+/** @internal 简易 HTML 转义 */
 function escapeHtml(s: string) {
   return s
     .replace(/&/g, '&amp;')

@@ -11,9 +11,12 @@ import { Ctx } from '../helpers/context.helper'
 type ProjectQuery = Static<typeof ProjectQuerySchema> & { offset: number; limit: number }
 type CreateProjectBody = Static<typeof CreateProjectBodySchema>
 
+/** @internal 不可变字段，更新时会被忽略 */
 const IMMUTABLE = new Set(['id', 'githubId', 'createdAt', 'updatedAt', 'lastSyncAt'])
 
-// 组装排序条件
+/**
+ * @internal 允许排序的字段白名单。防止任意字段注入导致潜在的性能或信息泄露问题。
+ */
 const ORDERABLE = new Set<keyof Project>([
   'createdAt',
   'updatedAt',
@@ -24,7 +27,9 @@ const ORDERABLE = new Set<keyof Project>([
   'name',
 ])
 
-// 仅允许用户在业务侧编辑的标量字段（来源字段只读：name/fullName/url/description/language/stars/forks/lastCommit）
+/**
+ * @internal 用户可编辑的标量字段。GitHub 来源字段保持只读，避免被手动篡改造成数据不一致。
+ */
 const EDITABLE_SCALAR_KEYS: Array<keyof CreateProjectBody> = [
   'notes',
   'favorite',
@@ -33,10 +38,25 @@ const EDITABLE_SCALAR_KEYS: Array<keyof CreateProjectBody> = [
   'score',
 ]
 
-// 幂等：输入数组去重 & 去掉空值
+/**
+ * @internal 幂等工具：数组去重并过滤掉空/无效值。
+ */
 const uniq = <T>(arr: T[]) =>
   Array.from(new Set(arr)).filter((v) => v !== undefined && v !== null && v !== '')
 
+/**
+ * 列表查询项目，支持分页、标签、语言、星标/分叉区间、模糊搜索、时间范围与多字段排序。
+ *
+ * - 默认只返回未归档 (archived=false) 项目，除非显式传入 archived=true。
+ * - Tag / VideoLink 关系会一并加载并扁平化为 DTO。
+ * - 排序字段受白名单限制，未指定或非法时按创建时间倒序。
+ *
+ * @param ctx 请求上下文（含 prisma / log / config）
+ * @param query 查询参数（已附加 offset/limit）
+ * @returns {Promise<{data: ReturnType<typeof toProjectDtos>; total: number}>} 分页数据与总数
+ * @throws {AppError} 理论上仅内部错误；参数校验在路由层完成
+ * @category Project
+ */
 export async function getProjectsService(ctx: Ctx, query: ProjectQuery) {
   const {
     name,
@@ -155,6 +175,14 @@ export async function getProjectsService(ctx: Ctx, query: ProjectQuery) {
   return result
 }
 
+/**
+ * 按 ID 获取单个项目（含标签与视频链接）。
+ *
+ * @param ctx 上下文
+ * @param id 项目主键 ID
+ * @returns 项目 DTO；不存在返回 null
+ * @category Project
+ */
 export async function getProjectByIdService(ctx: Ctx, id: string) {
   const project = await ctx.prisma.project.findUnique({
     where: { id },
@@ -172,6 +200,24 @@ export async function getProjectByIdService(ctx: Ctx, id: string) {
   return toProjectDto(project as unknown as ProjectWithRelations)
 }
 
+/**
+ * 创建新项目（幂等保护：依据 githubId 保证唯一）。
+ *
+ * 流程：
+ * 1. 校验 githubId 不重复
+ * 2. 创建 Project
+ * 3. 处理 tags：存在则关联，不存在则批量创建后关联
+ * 4. 批量创建 videoLinks
+ * 5. 返回包含关系的扁平 DTO
+ *
+ * 所有操作在单个事务中执行，保证一致性。
+ *
+ * @param ctx 上下文
+ * @param body 创建请求体
+ * @returns 新项目 DTO
+ * @throws {AppError} githubId 为空或已存在冲突
+ * @category Project
+ */
 export async function createProjectService(ctx: Ctx, body: CreateProjectBody) {
   return await ctx.prisma.$transaction(async (tx) => {
     const { tags = [], videoLinks = [], ...projectData } = body
@@ -257,6 +303,21 @@ export async function createProjectService(ctx: Ctx, body: CreateProjectBody) {
   })
 }
 
+/**
+ * 更新项目（部分字段）。
+ *
+ * - IMMUTABLE 列表中的字段会被忽略。
+ * - 仅对 EDITABLE_SCALAR_KEYS 中出现且值发生变化的字段执行更新。
+ * - tags / videoLinks 使用“名称/URL 幂等”策略做差异同步（新增/移除）。
+ * - 所有操作走同一事务，确保状态一致。
+ *
+ * @param ctx 上下文
+ * @param id 项目 ID
+ * @param rawBody 变更内容（部分字段）
+ * @returns 最新项目 DTO
+ * @throws {AppError} 项目不存在或已归档；更新后查不到项目（极少数并发表）
+ * @category Project
+ */
 export async function updateProjectService(
   ctx: Ctx,
   id: string,
@@ -396,11 +457,34 @@ export async function updateProjectService(
   })
 }
 
+/**
+ * 删除（归档并物理移除）项目的便捷包装，默认 reason=manual。
+ * 实际逻辑由 `archiveAndDeleteProjectById` 复用。
+ *
+ * @param ctx 上下文
+ * @param id 项目 ID
+ * @category Project
+ */
 export async function deleteProjectService(ctx: Ctx, id: string) {
   await archiveAndDeleteProjectById(ctx, id, 'manual')
 }
 
 // 归档并删除 Project（统一给手动删除与同步软删调用）
+/**
+ * 归档并物理删除项目：
+ *
+ * 1. 读取完整实体 + 关系并生成快照 DTO
+ * 2. 写入 `archivedProject` 归档表（允许同一 githubId 多次归档）
+ * 3. 删除中间关联 & videoLinks & 主实体（保持主表干净，便于活跃数据查询）
+ *
+ * 设计说明：选择物理删除活跃表是为了控制表规模与查询性能；历史数据通过归档表追溯。
+ *
+ * @param ctx 上下文
+ * @param id 项目 ID
+ * @param reason 归档原因（manual=手动删除 / unstarred=同步检测不再 star）
+ * @throws {AppError} 项目未找到
+ * @category Project
+ */
 export async function archiveAndDeleteProjectById(
   ctx: Ctx,
   id: string,

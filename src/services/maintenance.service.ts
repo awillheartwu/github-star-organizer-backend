@@ -2,6 +2,16 @@ import type { Ctx } from '../helpers/context.helper'
 import { Queue } from 'bullmq'
 import { SYNC_STARS_QUEUE, SYNC_STARS_JOB } from '../constants/queueNames'
 
+/**
+ * RefreshToken 清理选项。
+ * - expiredCleanAfterDays: 过期后再保留多少天再物理删除
+ * - revokedRetentionDays: 撤销后保留天数
+ * - batch: 每批删除条数
+ * - dryRun: 仅统计不删除
+ * - useLock: 是否启用分布式互斥
+ * - lockKey / lockTtlSec: 自定义锁键与 TTL
+ * @category Maintenance
+ */
 type CleanupRtOptions = {
   expiredCleanAfterDays?: number
   revokedRetentionDays?: number
@@ -12,6 +22,12 @@ type CleanupRtOptions = {
   lockTtlSec?: number
 }
 
+/**
+ * 清理 RefreshToken：支持过期与撤销分开统计 + 批处理删除；可 dryRun 预览。
+ * 可选分布式锁避免多实例并发清理。
+ * @returns 预览与实际删除统计结果
+ * @category Maintenance
+ */
 export async function cleanupRefreshTokensService(ctx: Ctx, options: CleanupRtOptions = {}) {
   const expiredCleanAfterDays =
     options.expiredCleanAfterDays ?? ctx.config.rtExpiredCleanAfterDays ?? 0
@@ -107,6 +123,16 @@ export async function cleanupRefreshTokensService(ctx: Ctx, options: CleanupRtOp
 }
 
 // —— BullMQ 清理 —— //
+/**
+ * BullMQ 清理选项。
+ * - completedAfterDays: 完成 job 保留天数
+ * - failedAfterDays: 失败 job 保留天数
+ * - trimEventsTo: 事件流裁剪长度
+ * - dryRun: 仅统计不修改
+ * - queueName: 目标队列
+ * - useLock: 分布式锁
+ * @category Maintenance
+ */
 type CleanupBullOpts = {
   dryRun?: boolean
   completedAfterDays?: number
@@ -118,6 +144,12 @@ type CleanupBullOpts = {
   lockTtlSec?: number
 }
 
+/**
+ * 清理 BullMQ 队列：过期的 completed/failed 任务、裁剪事件、移除无效 repeatable 任务。
+ * 支持 dryRun 与分布式锁。
+ * @returns 清理统计
+ * @category Maintenance
+ */
 export async function cleanupBullmqService(ctx: Ctx, opts: CleanupBullOpts = {}) {
   const dryRun = opts.dryRun ?? ctx.config.bullCleanDryRun ?? true
   const completedAfterDays = opts.completedAfterDays ?? ctx.config.bullCleanCompletedAfterDays ?? 3
