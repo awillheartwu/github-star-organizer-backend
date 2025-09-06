@@ -72,3 +72,7 @@ profile*
 # Dist or compiled files
 dist/
 build/
+
+# Generated docs (legacy singular path retained for safety)
+docs/typedoc/
+docs/openapi*

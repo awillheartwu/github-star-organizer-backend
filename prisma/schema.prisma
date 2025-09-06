@@ -27,37 +27,61 @@ enum ArchivedReason {
   unstarred // 同步检测到已取消 star
 }
 
+/// GitHub 项目（来自 stars 同步）与用户侧标注信息
 model Project {
-  id          String    @id @default(uuid()) // 主键，UUID
-  githubId    Int       @unique // GitHub 项目的唯一 ID（来自 GitHub API）
-  name        String // 仓库名称（如 star-organizer）
-  fullName    String // 仓库全名（如 user/star-organizer）
-  url         String // 仓库链接
-  description String? // 项目描述
-  language    String? // 主语言
-  stars       Int       @default(0) // Star 数量
-  forks       Int       @default(0) // Fork 数量
-  lastCommit  DateTime? // 最后一次提交时间（可选）
-  lastSyncAt  DateTime  @default(now()) // 最后同步时间
-  touchedAt   DateTime? // 最近一次被同步任务“触达”的时间（内容未变也会更新）
+  /// 主键，UUID
+  id          String    @id @default(uuid())
+  /// GitHub 项目的唯一 ID（来自 GitHub API）
+  githubId    Int       @unique
+  /// 仓库名称（如 star-organizer）
+  name        String
+  /// 仓库全名（如 user/star-organizer）
+  fullName    String
+  /// 仓库链接
+  url         String
+  /// 项目描述
+  description String?
+  /// 主语言
+  language    String?
+  /// Star 数量
+  stars       Int       @default(0)
+  /// Fork 数量
+  forks       Int       @default(0)
+  /// 最后一次提交时间（可选）
+  lastCommit  DateTime?
+  /// 最后同步时间
+  lastSyncAt  DateTime  @default(now())
+  /// 最近一次被同步任务“触达”的时间（内容未变也会更新）
+  touchedAt   DateTime?
 
   // Custom info
-  notes      String? // 用户备注
-  favorite   Boolean     @default(false) // 是否标记为收藏
-  archived   Boolean     @default(false) // 是否归档
-  pinned     Boolean     @default(false) // 是否置顶
-  score      Int? // 用户评分（可选）
-  videoLinks VideoLink[] // 关联的视频链接（多对一）
-  // 最新 AI 摘要（冗余存储，便于快速查询与展示）
+  /// 用户备注
+  notes        String?
+  /// 是否标记为收藏
+  favorite     Boolean     @default(false)
+  /// 是否归档
+  archived     Boolean     @default(false)
+  /// 是否置顶
+  pinned       Boolean     @default(false)
+  /// 用户评分（可选）
+  score        Int?
+  /// 关联的视频链接（多对一）
+  videoLinks   VideoLink[]
+  /// 最新 AI 摘要（短）
   summaryShort String?
+  /// 最新 AI 摘要（长）
   summaryLong  String?
 
-  // Relations
-  tags ProjectTag[] // 项目关联的标签（多对多）
+  /// 项目关联的标签（多对多）
+  tags ProjectTag[]
 
-  createdAt DateTime    @default(now()) // 创建时间
-  updatedAt DateTime    @default(now()) @updatedAt // 更新时间（自动更新）
-  deletedAt DateTime? // 软删除时间（可选）
+  /// 创建时间
+  createdAt DateTime  @default(now())
+  /// 更新时间（自动更新）
+  updatedAt DateTime  @default(now()) @updatedAt
+  /// 软删除时间（可选）
+  deletedAt DateTime?
+
   AiSummary AiSummary[]
 
   // 🔽 索引区（新增）
@@ -79,15 +103,24 @@ enum AiSummaryStyle {
   long
 }
 
+/// AI 摘要历史记录
 model AiSummary {
+  /// 主键
   id        String  @id @default(uuid())
+  /// 所属项目
   projectId String
+  /// 外键
   project   Project @relation(fields: [projectId], references: [id])
 
+  /// 摘要风格
   style   AiSummaryStyle
+  /// 使用的模型
   content String
+  /// 模型名称
   model   String?
+  /// 模型版本
   lang    String?
+  /// 使用的 tokens 数（可选）
   tokens  Int?
 
   createdAt DateTime @default(now())
@@ -96,26 +129,38 @@ model AiSummary {
   @@index([style])
 }
 
+/// 标签表
 model Tag {
-  id          String       @id @default(uuid()) // 主键，UUID
-  name        String // 标签名称（唯一） 修正,考虑软删,不再唯一
-  description String? // 标签描述（可选）
-  projects    ProjectTag[] // 拥有该标签的项目（多对多）
+  /// 主键，UUID
+  id          String       @id @default(uuid())
+  /// 标签名称（不再唯一，靠软删区分）
+  name        String
+  /// 标签描述（可选）
+  description String?
+  /// 拥有该标签的项目（多对多）
+  projects    ProjectTag[]
 
-  archived  Boolean   @default(false) // 是否归档
-  createdAt DateTime  @default(now()) // 创建时间
-  updatedAt DateTime  @default(now()) @updatedAt // 更新时间（自动更新）
-  deletedAt DateTime? // 软删除时间（可选）
+  /// 是否归档
+  archived  Boolean   @default(false)
+  /// 创建时间
+  createdAt DateTime  @default(now())
+  /// 更新时间（自动更新）
+  updatedAt DateTime  @default(now()) @updatedAt
+  /// 软删除时间（可选）
+  deletedAt DateTime?
 
   @@index([archived, createdAt]) // 常用 where archived=false 排序 createdAt
   @@index([name]) // name 模糊匹配也有帮助（SQLite 里作用有限，但保留可读性）
 }
 
+/// 项目-标签 关联表
 model ProjectTag {
-  project   Project @relation(fields: [projectId], references: [id]) // 外键关联 Project
+  /// 外键关联 Project
+  project   Project @relation(fields: [projectId], references: [id])
   projectId String
 
-  tag   Tag    @relation(fields: [tagId], references: [id]) // 外键关联 Tag
+  /// 外键关联 Tag
+  tag   Tag    @relation(fields: [tagId], references: [id])
   tagId String
 
   @@id([projectId, tagId]) // 联合主键，确保 project 与 tag 的唯一组合
@@ -124,32 +169,49 @@ model ProjectTag {
   @@index([tagId])
 }
 
+/// 视频链接
 model VideoLink {
-  id        String  @id @default(uuid()) // 主键
-  url       String // 视频链接
-  project   Project @relation(fields: [projectId], references: [id]) // 所属项目
-  projectId String // 外键
+  /// 主键
+  id        String  @id @default(uuid())
+  /// 视频链接
+  url       String
+  /// 所属项目
+  project   Project @relation(fields: [projectId], references: [id])
+  /// 外键
+  projectId String
 
-  archived  Boolean   @default(false) // 是否归档
-  createdAt DateTime  @default(now()) // 创建时间
-  updatedAt DateTime  @default(now()) @updatedAt // 更新时间（自动更新）
-  deletedAt DateTime? // 软删除时间（可选）
+  /// 是否归档
+  archived  Boolean   @default(false)
+  /// 创建时间
+  createdAt DateTime  @default(now())
+  /// 更新时间（自动更新）
+  updatedAt DateTime  @default(now()) @updatedAt
+  /// 软删除时间（可选）
+  deletedAt DateTime?
 
   @@index([projectId])
   @@index([archived, createdAt]) // 常用 where archived=false 排序 createdAt
 }
 
+/// 用户角色
 enum UserRole {
   USER
   ADMIN
 }
 
+/// 用户表
 model User {
+  /// 主键，UUID
   id           String   @id @default(uuid())
+  /// 用户邮箱
   email        String   @unique
+  /// 密码哈希
   passwordHash String
+  /// 显示名称
   displayName  String?
+  /// 用户角色
   role         UserRole @default(USER)
+  /// 令牌版本（用于刷新令牌的无状态撤销）
   tokenVersion Int      @default(0)
 
   createdAt DateTime @default(now())
@@ -161,21 +223,28 @@ model User {
   @@index([tokenVersion])
 }
 
+/// Refresh Token（仅存哈希）
 model RefreshToken {
   id     String @id @default(uuid())
+  /// 所属用户
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // 只存哈希（避免明文落库）
+  /// 只存哈希（避免明文落库）
   tokenHash String @unique
+  // 也可以用 jti（JWT ID）来唯一标识
   jti       String @unique
 
+  /// 只存哈希（避免明文落库）
   revoked           Boolean   @default(false)
+  /// 替换的令牌 ID（可选，用于单点登录等）
   replacedByTokenId String?
+  /// 过期时间
   expiresAt         DateTime
   createdAt         DateTime  @default(now())
   revokedAt         DateTime?
 
+  /// ip 地址与 user-agent（可选，用于审计）
   ip        String?
   userAgent String?
 
@@ -223,9 +292,12 @@ model SyncState {
 /// 归档的 Project 快照（允许同一 githubId 多次归档）
 model ArchivedProject {
   id                String         @id @default(uuid())
+  /// GitHub 项目 ID（非唯一，允许多次归档）
   githubId          Int?
   originalProjectId String?
+  /// 归档理由
   reason            ArchivedReason
+  /// 归档时的完整项目信息快照（JSON）
   snapshot          Json
   archivedAt        DateTime       @default(now())
 

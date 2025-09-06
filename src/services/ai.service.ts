@@ -51,7 +51,23 @@ export async function summarizeProject(
     readmeExcerpt
   )
 
-  const completion = await generateWithProvider(ctx.config, prompt, options)
+  // Prefer structured output with JSON schema; fallback inside client to plain text JSON
+  const schema = {
+    type: 'object',
+    properties: {
+      short: { type: 'string' },
+      long: { type: 'string' },
+      tags: { type: 'array', items: { type: 'string' } },
+    },
+    additionalProperties: false,
+  } as const
+
+  const completion = await generateWithProvider(ctx.config, prompt, {
+    ...options,
+    structured: true,
+    jsonSchema: schema as unknown as Record<string, unknown>,
+    functionName: 'build_summary',
+  })
   const parsed = safeParseJson(completion.content)
   if (!parsed || typeof parsed !== 'object') {
     throw new AppError('AI response is not valid JSON', 502, ERROR_TYPES.INTERNAL)

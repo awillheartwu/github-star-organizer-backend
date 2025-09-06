@@ -1,0 +1,21 @@
+{
+  "entryPoints": [
+    "src/controllers/**/*.ts",
+    "src/services/**/*.ts",
+    "src/helpers/**/*.ts"
+  ],
+  "exclude": [
+    "src/generated/**",
+    "src/scripts/**",
+    "src/types/**",
+    "src/utils/**",
+    "src/plugins/**",
+    "**/*.d.ts"
+  ],
+  "tsconfig": "./tsconfig.typedoc.json",
+  "out": "docs/typedoc",
+  "excludePrivate": true,
+  "excludeProtected": true,
+  "hideGenerator": true,
+  "skipErrorChecking": true
+}

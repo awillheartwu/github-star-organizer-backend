@@ -6,15 +6,20 @@ import { __nullable__ } from './__nullable__'
 
 export const TagPlain = Type.Object(
   {
-    id: Type.String(),
-    name: Type.String(),
-    description: __nullable__(Type.String()),
-    archived: Type.Boolean(),
-    createdAt: Type.String({ format: 'date-time' }),
-    updatedAt: Type.String({ format: 'date-time' }),
-    deletedAt: __nullable__(Type.String({ format: 'date-time' })),
+    id: Type.String({ description: `主键，UUID` }),
+    name: Type.String({ description: `标签名称（不再唯一，靠软删区分）` }),
+    description: __nullable__(Type.String({ description: `标签描述（可选）` })),
+    archived: Type.Boolean({ description: `是否归档` }),
+    createdAt: Type.String({ format: 'date-time', description: `创建时间` }),
+    updatedAt: Type.String({
+      format: 'date-time',
+      description: `更新时间（自动更新）`,
+    }),
+    deletedAt: __nullable__(
+      Type.String({ format: 'date-time', description: `软删除时间（可选）` })
+    ),
   },
-  { additionalProperties: false }
+  { additionalProperties: false, description: `标签表` }
 )
 
 export const TagRelations = Type.Object(
@@ -22,12 +27,12 @@ export const TagRelations = Type.Object(
     projects: Type.Array(
       Type.Object(
         { projectId: Type.String(), tagId: Type.String() },
-        { additionalProperties: false }
+        { additionalProperties: false, description: `项目-标签 关联表` }
       ),
       { additionalProperties: false }
     ),
   },
-  { additionalProperties: false }
+  { additionalProperties: false, description: `标签表` }
 )
 
 export const TagWhere = Type.Partial(
@@ -38,15 +43,26 @@ export const TagWhere = Type.Partial(
           AND: Type.Union([Self, Type.Array(Self, { additionalProperties: false })]),
           NOT: Type.Union([Self, Type.Array(Self, { additionalProperties: false })]),
           OR: Type.Array(Self, { additionalProperties: false }),
-          id: Type.String(),
-          name: Type.String(),
-          description: Type.String(),
-          archived: Type.Boolean(),
-          createdAt: Type.String({ format: 'date-time' }),
-          updatedAt: Type.String({ format: 'date-time' }),
-          deletedAt: Type.String({ format: 'date-time' }),
+          id: Type.String({ description: `主键，UUID` }),
+          name: Type.String({
+            description: `标签名称（不再唯一，靠软删区分）`,
+          }),
+          description: Type.String({ description: `标签描述（可选）` }),
+          archived: Type.Boolean({ description: `是否归档` }),
+          createdAt: Type.String({
+            format: 'date-time',
+            description: `创建时间`,
+          }),
+          updatedAt: Type.String({
+            format: 'date-time',
+            description: `更新时间（自动更新）`,
+          }),
+          deletedAt: Type.String({
+            format: 'date-time',
+            description: `软删除时间（可选）`,
+          }),
         },
-        { additionalProperties: false }
+        { additionalProperties: false, description: `标签表` }
       ),
     { $id: 'Tag' }
   )
@@ -56,10 +72,14 @@ export const TagWhereUnique = Type.Recursive(
   (Self) =>
     Type.Intersect(
       [
-        Type.Partial(Type.Object({ id: Type.String() }, { additionalProperties: false }), {
-          additionalProperties: false,
-        }),
-        Type.Union([Type.Object({ id: Type.String() })], {
+        Type.Partial(
+          Type.Object(
+            { id: Type.String({ description: `主键，UUID` }) },
+            { additionalProperties: false, description: `标签表` }
+          ),
+          { additionalProperties: false }
+        ),
+        Type.Union([Type.Object({ id: Type.String({ description: `主键，UUID` }) })], {
           additionalProperties: false,
         }),
         Type.Partial(
@@ -73,13 +93,24 @@ export const TagWhereUnique = Type.Recursive(
         Type.Partial(
           Type.Object(
             {
-              id: Type.String(),
-              name: Type.String(),
-              description: Type.String(),
-              archived: Type.Boolean(),
-              createdAt: Type.String({ format: 'date-time' }),
-              updatedAt: Type.String({ format: 'date-time' }),
-              deletedAt: Type.String({ format: 'date-time' }),
+              id: Type.String({ description: `主键，UUID` }),
+              name: Type.String({
+                description: `标签名称（不再唯一，靠软删区分）`,
+              }),
+              description: Type.String({ description: `标签描述（可选）` }),
+              archived: Type.Boolean({ description: `是否归档` }),
+              createdAt: Type.String({
+                format: 'date-time',
+                description: `创建时间`,
+              }),
+              updatedAt: Type.String({
+                format: 'date-time',
+                description: `更新时间（自动更新）`,
+              }),
+              deletedAt: Type.String({
+                format: 'date-time',
+                description: `软删除时间（可选）`,
+              }),
             },
             { additionalProperties: false }
           )
@@ -103,12 +134,15 @@ export const TagSelect = Type.Partial(
       deletedAt: Type.Boolean(),
       _count: Type.Boolean(),
     },
-    { additionalProperties: false }
+    { additionalProperties: false, description: `标签表` }
   )
 )
 
 export const TagInclude = Type.Partial(
-  Type.Object({ projects: Type.Boolean(), _count: Type.Boolean() }, { additionalProperties: false })
+  Type.Object(
+    { projects: Type.Boolean(), _count: Type.Boolean() },
+    { additionalProperties: false, description: `标签表` }
+  )
 )
 
 export const TagOrderBy = Type.Partial(
@@ -136,7 +170,7 @@ export const TagOrderBy = Type.Partial(
         additionalProperties: false,
       }),
     },
-    { additionalProperties: false }
+    { additionalProperties: false, description: `标签表` }
   )
 )
 

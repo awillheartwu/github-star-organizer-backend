@@ -7,13 +7,13 @@ import { __nullable__ } from './__nullable__'
 export const ArchivedProjectPlain = Type.Object(
   {
     id: Type.String(),
-    githubId: __nullable__(Type.Integer()),
+    githubId: __nullable__(Type.Integer({ description: `GitHub 项目 ID（非唯一，允许多次归档）` })),
     originalProjectId: __nullable__(Type.String()),
     reason: Type.Union([Type.Literal('manual'), Type.Literal('unstarred')], {
       additionalProperties: false,
       description: `归档原因`,
     }),
-    snapshot: Type.Any(),
+    snapshot: Type.Any({ description: `归档时的完整项目信息快照（JSON）` }),
     archivedAt: Type.String({ format: 'date-time' }),
   },
   {
@@ -39,13 +39,17 @@ export const ArchivedProjectWhere = Type.Partial(
           NOT: Type.Union([Self, Type.Array(Self, { additionalProperties: false })]),
           OR: Type.Array(Self, { additionalProperties: false }),
           id: Type.String(),
-          githubId: Type.Integer(),
+          githubId: Type.Integer({
+            description: `GitHub 项目 ID（非唯一，允许多次归档）`,
+          }),
           originalProjectId: Type.String(),
           reason: Type.Union([Type.Literal('manual'), Type.Literal('unstarred')], {
             additionalProperties: false,
             description: `归档原因`,
           }),
-          snapshot: Type.Any(),
+          snapshot: Type.Any({
+            description: `归档时的完整项目信息快照（JSON）`,
+          }),
           archivedAt: Type.String({ format: 'date-time' }),
         },
         {
@@ -86,13 +90,17 @@ export const ArchivedProjectWhereUnique = Type.Recursive(
           Type.Object(
             {
               id: Type.String(),
-              githubId: Type.Integer(),
+              githubId: Type.Integer({
+                description: `GitHub 项目 ID（非唯一，允许多次归档）`,
+              }),
               originalProjectId: Type.String(),
               reason: Type.Union([Type.Literal('manual'), Type.Literal('unstarred')], {
                 additionalProperties: false,
                 description: `归档原因`,
               }),
-              snapshot: Type.Any(),
+              snapshot: Type.Any({
+                description: `归档时的完整项目信息快照（JSON）`,
+              }),
               archivedAt: Type.String({ format: 'date-time' }),
             },
             { additionalProperties: false }

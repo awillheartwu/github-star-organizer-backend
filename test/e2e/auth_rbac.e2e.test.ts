@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify'
 import { buildTestApp, cleanupTestApp } from '../helpers/app.helper'
 import { TestDatabase } from '../helpers/database.helper'
-import { createTestUser, getAuthToken, getRefreshCookie } from '../helpers/auth.helper'
+import { createTestUser, getAuthToken } from '../helpers/auth.helper'
 
 describe('E2E Auth & RBAC Smoke', () => {
   let app: FastifyInstance

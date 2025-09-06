@@ -14,7 +14,7 @@ function loadDotenvFiles() {
 }
 
 // 2) 描述和验证原始环境变量
-const EnvSchema = Type.Object(
+export const EnvSchema = Type.Object(
   {
     NODE_ENV: Type.Union(
       [Type.Literal('development'), Type.Literal('production'), Type.Literal('test')],
@@ -37,9 +37,13 @@ const EnvSchema = Type.Object(
       { default: 'info' }
     ),
     DATABASE_URL: Type.String({ default: 'file:./dev.db' }),
-    AI_API_KEY: Type.Optional(Type.String()),
-    AI_MODEL: Type.Optional(Type.String({ default: 'deepseek-chat' })),
-    AI_TEMPERATURE: Type.Optional(Type.Number({ default: 0.3 })),
+    AI_API_KEY: Type.Optional(Type.String({ description: 'AI 提供商 API Key（DeepSeek 等）' })),
+    AI_MODEL: Type.Optional(
+      Type.String({ default: 'deepseek-chat', description: 'AI 模型名称，如 deepseek-chat' })
+    ),
+    AI_TEMPERATURE: Type.Optional(
+      Type.Number({ default: 0.3, description: 'AI 采样温度（0~1），越大越发散' })
+    ),
     // cors相关
     CORS_ORIGIN: Type.Optional(Type.String({ default: '*' })), // 允许的 origin，多个可用逗号分隔
     CORS_CREDENTIALS: Type.Optional(Type.Boolean({ default: false })),
@@ -47,72 +51,97 @@ const EnvSchema = Type.Object(
     BODY_LIMIT: Type.Optional(Type.Number({ default: 1048576 })), // 1MB
     HELMET_CSP: Type.Optional(Type.Boolean({ default: true })), // 是否启用 CSP
     // auth 相关
-    JWT_ACCESS_SECRET: Type.String(),
-    JWT_REFRESH_SECRET: Type.String(),
-    JWT_ACCESS_EXPIRES: Type.String({ default: '15m' }),
-    JWT_REFRESH_EXPIRES: Type.String({ default: '30d' }),
+    JWT_ACCESS_SECRET: Type.String({ description: 'Access Token 签名密钥（保密）' }),
+    JWT_REFRESH_SECRET: Type.String({ description: 'Refresh Token 签名密钥（保密）' }),
+    JWT_ACCESS_EXPIRES: Type.String({ default: '15m', description: 'AT 过期时间，如 15m/1h' }),
+    JWT_REFRESH_EXPIRES: Type.String({ default: '30d', description: 'RT 过期时间，如 30d' }),
 
-    AUTH_COOKIE_NAME: Type.String({ default: 'rt' }),
-    AUTH_COOKIE_DOMAIN: Type.Optional(Type.String()), // 可为空
-    AUTH_COOKIE_SECURE: Type.Boolean({ default: false }),
+    AUTH_COOKIE_NAME: Type.String({ default: 'rt', description: 'Refresh Token Cookie 名称' }),
+    AUTH_COOKIE_DOMAIN: Type.Optional(Type.String({ description: 'Refresh Token Cookie 域名' })), // 可为空
+    AUTH_COOKIE_SECURE: Type.Boolean({
+      default: false,
+      description: 'Refresh Token Cookie 是否安全',
+    }),
     AUTH_COOKIE_SAME_SITE: Type.Union(
       [Type.Literal('lax'), Type.Literal('strict'), Type.Literal('none')],
       { default: 'lax' }
     ),
 
-    AUTH_ALLOW_REGISTRATION: Type.Boolean({ default: true }),
+    AUTH_ALLOW_REGISTRATION: Type.Boolean({ default: true, description: '是否允许注册新用户' }),
 
     // 可选：限流
-    RATE_LIMIT_WINDOW: Type.Optional(Type.Number({ default: 60000 })), // ms
-    RATE_LIMIT_MAX: Type.Optional(Type.Number({ default: 20 })),
+    RATE_LIMIT_WINDOW: Type.Optional(
+      Type.Number({ default: 60000, description: '限流窗口时间（毫秒）' })
+    ), // ms
+    RATE_LIMIT_MAX: Type.Optional(Type.Number({ default: 20, description: '限流最大请求数' })),
 
     // 放在 EnvSchema 的对象里（保持风格一致）
-    REDIS_HOST: Type.String({}),
-    REDIS_PORT: Type.Number({ default: 6379 }),
-    REDIS_PASSWORD: Type.String({}),
-    BULL_PREFIX: Type.String({ default: 'gsor' }), // bullmq key 前缀
+    REDIS_HOST: Type.String({ description: 'Redis 主机地址' }),
+    REDIS_PORT: Type.Number({ default: 6379, description: 'Redis 端口' }),
+    REDIS_PASSWORD: Type.String({ description: 'Redis 密码' }),
+    BULL_PREFIX: Type.String({ default: 'gsor', description: 'BullMQ key 前缀' }),
     BULL_ROLE: Type.Union(
       [Type.Literal('both'), Type.Literal('worker'), Type.Literal('producer')],
-      { default: 'both' }
+      { default: 'both', description: 'BullMQ 角色：both/worker/producer' }
     ),
 
     // 同步任务参数
-    GITHUB_TOKEN: Type.Optional(Type.String()),
-    GITHUB_USERNAME: Type.String(), // 拉谁的 stars
+    GITHUB_TOKEN: Type.Optional(Type.String({ description: 'GitHub Personal Access Token' })),
+    GITHUB_USERNAME: Type.String({ description: '要同步其 stars 的 GitHub 用户名' }),
 
-    SYNC_STARS_CRON: Type.Optional(Type.String({ default: '0 5 * * *' })), // 每天 05:00
-    SYNC_CONCURRENCY: Type.Optional(Type.Number({ default: 2 })), // worker 并发
-    SYNC_JOB_ATTEMPTS: Type.Optional(Type.Number({ default: 3 })),
-    SYNC_JOB_BACKOFF_MS: Type.Optional(Type.Number({ default: 30000 })),
-    SYNC_PER_PAGE: Type.Optional(Type.Number({ default: 50 })),
-    SYNC_MAX_PAGES: Type.Optional(Type.Number({ default: 0 })), // 0=不限
-    SYNC_SOFT_DELETE_UNSTARRED: Type.Optional(Type.Boolean({ default: false })),
-    SYNC_REQUEST_TIMEOUT: Type.Optional(Type.Number({ default: 15000 })),
+    SYNC_STARS_CRON: Type.Optional(
+      Type.String({ default: '0 5 * * *', description: 'stars 同步 cron 表达式（每天 05:00）' })
+    ),
+    SYNC_CONCURRENCY: Type.Optional(Type.Number({ default: 2, description: 'BullMQ worker 并发' })),
+    SYNC_JOB_ATTEMPTS: Type.Optional(Type.Number({ default: 3, description: '重试次数' })),
+    SYNC_JOB_BACKOFF_MS: Type.Optional(
+      Type.Number({ default: 30000, description: '失败后退避时间（毫秒）' })
+    ),
+    SYNC_PER_PAGE: Type.Optional(Type.Number({ default: 50, description: '每页抓取大小' })),
+    SYNC_MAX_PAGES: Type.Optional(Type.Number({ default: 0, description: '最大页数，0 表示无限' })),
+    SYNC_SOFT_DELETE_UNSTARRED: Type.Optional(
+      Type.Boolean({ default: false, description: '全量末页未出现的项目是否归档删除' })
+    ),
+    SYNC_REQUEST_TIMEOUT: Type.Optional(
+      Type.Number({ default: 15000, description: 'GitHub 请求超时（毫秒）' })
+    ),
     // 邮件通知（可选）
-    NOTIFY_EMAIL_ENABLED: Type.Optional(Type.Boolean({ default: false })),
-    SMTP_HOST: Type.Optional(Type.String()),
-    SMTP_PORT: Type.Optional(Type.Number({ default: 465 })),
-    SMTP_SECURE: Type.Optional(Type.Boolean({ default: true })),
-    SMTP_USER: Type.Optional(Type.String()),
-    SMTP_PASS: Type.Optional(Type.String()),
-    MAIL_FROM: Type.Optional(Type.String()),
-    MAIL_TO: Type.Optional(Type.String()),
+    NOTIFY_EMAIL_ENABLED: Type.Optional(
+      Type.Boolean({ default: false, description: '启用邮件通知（同步/维护）' })
+    ),
+    SMTP_HOST: Type.Optional(Type.String({ description: 'SMTP 主机' })),
+    SMTP_PORT: Type.Optional(Type.Number({ default: 465, description: 'SMTP 端口' })),
+    SMTP_SECURE: Type.Optional(Type.Boolean({ default: true, description: 'SMTP TLS' })),
+    SMTP_USER: Type.Optional(Type.String({ description: 'SMTP 用户名' })),
+    SMTP_PASS: Type.Optional(Type.String({ description: 'SMTP 授权码/密码' })),
+    MAIL_FROM: Type.Optional(Type.String({ description: '邮件 From 显示' })),
+    MAIL_TO: Type.Optional(Type.String({ description: '通知收件人，逗号分隔' })),
 
     // 新版：更细粒度的 RT 清理参数
-    RT_EXPIRED_CLEAN_AFTER_DAYS: Type.Optional(Type.Number({ default: 0 })),
-    RT_REVOKED_RETENTION_DAYS: Type.Optional(Type.Number({ default: 7 })),
-    RT_CLEAN_BATCH: Type.Optional(Type.Number({ default: 1000 })),
-    RT_CLEAN_DRY_RUN: Type.Optional(Type.Boolean({ default: true })),
+    RT_EXPIRED_CLEAN_AFTER_DAYS: Type.Optional(
+      Type.Number({ default: 0, description: '过期 RT 保留天数（0 立即清理）' })
+    ),
+    RT_REVOKED_RETENTION_DAYS: Type.Optional(
+      Type.Number({ default: 7, description: '吊销 RT 审计保留天数' })
+    ),
+    RT_CLEAN_BATCH: Type.Optional(Type.Number({ default: 1000, description: '清理批次大小' })),
+    RT_CLEAN_DRY_RUN: Type.Optional(Type.Boolean({ default: true, description: '仅预览' })),
 
     // BullMQ 清理参数（可选）
-    BULL_DRY_RUN: Type.Optional(Type.Boolean({ default: true })),
-    BULL_CLEAN_COMPLETED_AFTER_DAYS: Type.Optional(Type.Number({ default: 3 })),
-    BULL_CLEAN_FAILED_AFTER_DAYS: Type.Optional(Type.Number({ default: 30 })),
-    BULL_TRIM_EVENTS: Type.Optional(Type.Number({ default: 1000 })),
+    BULL_DRY_RUN: Type.Optional(Type.Boolean({ default: true, description: 'Bull 清理仅预览' })),
+    BULL_CLEAN_COMPLETED_AFTER_DAYS: Type.Optional(
+      Type.Number({ default: 3, description: '清理已完成任务（天）' })
+    ),
+    BULL_CLEAN_FAILED_AFTER_DAYS: Type.Optional(
+      Type.Number({ default: 30, description: '清理失败任务（天）' })
+    ),
+    BULL_TRIM_EVENTS: Type.Optional(Type.Number({ default: 1000, description: '保留事件条数' })),
 
     // 维护任务（repeatable job）
-    MAINT_ENABLED: Type.Optional(Type.Boolean({ default: true })),
-    MAINT_CRON: Type.Optional(Type.String({ default: '0 3 * * *' })),
+    MAINT_ENABLED: Type.Optional(Type.Boolean({ default: true, description: '开启日常维护' })),
+    MAINT_CRON: Type.Optional(
+      Type.String({ default: '0 3 * * *', description: '维护任务 cron（默认 03:00）' })
+    ),
   },
 
   { additionalProperties: false }
@@ -121,7 +150,7 @@ const EnvSchema = Type.Object(
 type Env = Static<typeof EnvSchema>
 
 // 3) 应用配置的形状暴露给代码库的其余部分
-const AppConfigSchema = Type.Object(
+export const AppConfigSchema = Type.Object(
   {
     env: Type.Union([
       Type.Literal('development'),

@@ -1,0 +1,2940 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "GitHub Star Organizer API",
+    "description": "API Docs",
+    "version": "0.1.0"
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {}
+  },
+  "paths": {
+    "/admin/set-role": {
+      "post": {
+        "summary": "Set user role (ADMIN only)",
+        "tags": [
+          "Admin"
+        ],
+        "description": "设置用户角色，仅限 ADMIN 访问",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "userId": {
+                    "type": "string"
+                  },
+                  "role": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "USER"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "ADMIN"
+                        ]
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "userId",
+                  "role"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/sync-stars": {
+      "post": {
+        "summary": "Enqueue GitHub stars sync (ADMIN)",
+        "tags": [
+          "Admin"
+        ],
+        "description": "手动入列 GitHub stars 同步任务，仅限 ADMIN 访问",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "default": "incremental",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "full"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "incremental"
+                        ]
+                      }
+                    ]
+                  },
+                  "perPage": {
+                    "minimum": 1,
+                    "maximum": 100,
+                    "type": "number"
+                  },
+                  "maxPages": {
+                    "minimum": 0,
+                    "type": "number"
+                  },
+                  "softDeleteUnstarred": {
+                    "type": "boolean"
+                  },
+                  "note": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "mode"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "jobId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message",
+                    "jobId"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "allOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "message": {
+                          "type": "string"
+                        },
+                        "code": {
+                          "type": "number"
+                        },
+                        "errorType": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "message",
+                        "code",
+                        "errorType"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "jobId": {
+                          "type": "string"
+                        },
+                        "state": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/sync-state": {
+      "get": {
+        "summary": "Get current sync state (ADMIN)",
+        "tags": [
+          "Admin"
+        ],
+        "description": "查询当前同步状态，仅限 ADMIN 访问",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "source": {
+                      "type": "string"
+                    },
+                    "key": {
+                      "type": "string"
+                    },
+                    "cursor": {
+                      "type": "string"
+                    },
+                    "etag": {
+                      "type": "string"
+                    },
+                    "lastRunAt": {
+                      "type": "string"
+                    },
+                    "lastSuccessAt": {
+                      "type": "string"
+                    },
+                    "lastErrorAt": {
+                      "type": "string"
+                    },
+                    "lastError": {
+                      "type": "string"
+                    },
+                    "statsJson": {
+                      "type": "string"
+                    },
+                    "updatedAt": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "source",
+                    "key",
+                    "updatedAt"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "number"
+                    },
+                    "errorType": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message",
+                    "code",
+                    "errorType"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/archived-projects": {
+      "get": {
+        "summary": "List archived projects (ADMIN)",
+        "tags": [
+          "Admin"
+        ],
+        "description": "只读归档项目列表",
+        "parameters": [
+          {
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "page",
+            "required": false
+          },
+          {
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false
+          },
+          {
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "manual"
+                  ]
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "unstarred"
+                  ]
+                }
+              ]
+            },
+            "in": "query",
+            "name": "reason",
+            "required": false
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "githubId": {
+                            "type": "integer"
+                          },
+                          "reason": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "manual"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "unstarred"
+                                ]
+                              }
+                            ]
+                          },
+                          "archivedAt": {
+                            "type": "string"
+                          },
+                          "snapshot": {}
+                        },
+                        "required": [
+                          "id",
+                          "reason",
+                          "archivedAt",
+                          "snapshot"
+                        ]
+                      }
+                    },
+                    "page": {
+                      "type": "number"
+                    },
+                    "pageSize": {
+                      "type": "number"
+                    },
+                    "total": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "message",
+                    "data",
+                    "page",
+                    "pageSize",
+                    "total"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/archived-projects/{id}": {
+      "get": {
+        "summary": "Get archived project detail (ADMIN)",
+        "tags": [
+          "Admin"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "githubId": {
+                          "type": "integer"
+                        },
+                        "reason": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "manual"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "unstarred"
+                              ]
+                            }
+                          ]
+                        },
+                        "archivedAt": {
+                          "type": "string"
+                        },
+                        "snapshot": {}
+                      },
+                      "required": [
+                        "id",
+                        "reason",
+                        "archivedAt",
+                        "snapshot"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "message",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ai/projects/{id}/summary": {
+      "post": {
+        "summary": "Generate AI summary for project",
+        "tags": [
+          "AI"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "style": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "short"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "long"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "both"
+                        ]
+                      }
+                    ]
+                  },
+                  "lang": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "zh"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "en"
+                        ]
+                      }
+                    ]
+                  },
+                  "model": {
+                    "type": "string"
+                  },
+                  "temperature": {
+                    "type": "number"
+                  },
+                  "createTags": {
+                    "type": "boolean"
+                  },
+                  "includeReadme": {
+                    "type": "boolean"
+                  },
+                  "readmeMaxChars": {
+                    "minimum": 500,
+                    "maximum": 20000,
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "summaryShort": {
+                          "type": "string"
+                        },
+                        "summaryLong": {
+                          "type": "string"
+                        },
+                        "model": {
+                          "type": "string"
+                        },
+                        "lang": {
+                          "type": "string"
+                        },
+                        "tagsCreated": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "tagsLinked": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": [
+                        "tagsCreated",
+                        "tagsLinked"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "message",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "summary": "Register",
+        "tags": [
+          "Auth"
+        ],
+        "description": "注册（如启用）",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "format": "email",
+                    "type": "string"
+                  },
+                  "password": {
+                    "minLength": 6,
+                    "type": "string"
+                  },
+                  "displayName": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "email",
+                  "password"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "summary": "Login",
+        "tags": [
+          "Auth"
+        ],
+        "description": "登录，成功后返回 accessToken,并在 httpOnly Cookie 下发 refreshToken",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "format": "email",
+                    "type": "string"
+                  },
+                  "password": {
+                    "minLength": 6,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "email",
+                  "password"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "accessToken": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "accessToken"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "message",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "summary": "Refresh access token",
+        "tags": [
+          "Auth"
+        ],
+        "description": "使用 refresh token 换取新的 access token",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "accessToken": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "accessToken"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "message",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "summary": "Logout",
+        "tags": [
+          "Auth"
+        ],
+        "description": "登出，撤销当前 refresh token",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "summary": "Current user",
+        "tags": [
+          "Auth"
+        ],
+        "description": "获取当前登录用户的信息",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "user": {
+                          "type": "object",
+                          "properties": {
+                            "sub": {
+                              "type": "string"
+                            },
+                            "role": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "USER"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "ADMIN"
+                                  ]
+                                }
+                              ]
+                            },
+                            "type": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "sub"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "user"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "message",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/change-password": {
+      "post": {
+        "summary": "Change password",
+        "tags": [
+          "Auth"
+        ],
+        "description": "修改密码(需要 access token)",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "oldPassword": {
+                    "minLength": 6,
+                    "type": "string"
+                  },
+                  "newPassword": {
+                    "minLength": 6,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "oldPassword",
+                  "newPassword"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects": {
+      "get": {
+        "summary": "Get all projects",
+        "tags": [
+          "Project"
+        ],
+        "description": "获取所有项目",
+        "parameters": [
+          {
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "page",
+            "required": false
+          },
+          {
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "boolean"
+            },
+            "in": "query",
+            "name": "archived",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "boolean"
+            },
+            "in": "query",
+            "name": "favorite",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "boolean"
+            },
+            "in": "query",
+            "name": "pinned",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "name",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "keyword",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "language",
+            "required": false
+          },
+          {
+            "schema": {
+              "uniqueItems": true,
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "in": "query",
+            "name": "languages",
+            "required": false
+          },
+          {
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "starsMin",
+            "required": false
+          },
+          {
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "starsMax",
+            "required": false
+          },
+          {
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "forksMin",
+            "required": false
+          },
+          {
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "forksMax",
+            "required": false
+          },
+          {
+            "schema": {
+              "uniqueItems": true,
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "in": "query",
+            "name": "tagNames",
+            "required": false
+          },
+          {
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "in": "query",
+            "name": "createdAtStart",
+            "required": false
+          },
+          {
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "in": "query",
+            "name": "createdAtEnd",
+            "required": false
+          },
+          {
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "in": "query",
+            "name": "updatedAtStart",
+            "required": false
+          },
+          {
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "in": "query",
+            "name": "updatedAtEnd",
+            "required": false
+          },
+          {
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "createdAt"
+                  ]
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "updatedAt"
+                  ]
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "stars"
+                  ]
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "forks"
+                  ]
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "lastCommit"
+                  ]
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "lastSyncAt"
+                  ]
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "name"
+                  ]
+                }
+              ]
+            },
+            "in": "query",
+            "name": "orderBy",
+            "required": false
+          },
+          {
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "asc"
+                  ]
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "desc"
+                  ]
+                }
+              ]
+            },
+            "in": "query",
+            "name": "orderDirection",
+            "required": false
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "additionalProperties": false,
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "githubId": {
+                            "type": "integer"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "fullName": {
+                            "type": "string"
+                          },
+                          "url": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "language": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "stars": {
+                            "type": "integer"
+                          },
+                          "forks": {
+                            "type": "integer"
+                          },
+                          "lastCommit": {
+                            "anyOf": [
+                              {
+                                "format": "date-time",
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "lastSyncAt": {
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "touchedAt": {
+                            "anyOf": [
+                              {
+                                "format": "date-time",
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "notes": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "favorite": {
+                            "type": "boolean"
+                          },
+                          "archived": {
+                            "type": "boolean"
+                          },
+                          "pinned": {
+                            "type": "boolean"
+                          },
+                          "score": {
+                            "anyOf": [
+                              {
+                                "type": "integer"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "summaryShort": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "summaryLong": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "createdAt": {
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "updatedAt": {
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "deletedAt": {
+                            "anyOf": [
+                              {
+                                "format": "date-time",
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "tags": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "description": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "name"
+                              ]
+                            }
+                          },
+                          "videoLinks": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "githubId",
+                          "name",
+                          "fullName",
+                          "url",
+                          "stars",
+                          "forks",
+                          "lastSyncAt",
+                          "favorite",
+                          "archived",
+                          "pinned",
+                          "createdAt",
+                          "updatedAt",
+                          "tags",
+                          "videoLinks"
+                        ]
+                      }
+                    },
+                    "page": {
+                      "type": "number"
+                    },
+                    "pageSize": {
+                      "type": "number"
+                    },
+                    "total": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "message",
+                    "data",
+                    "page",
+                    "pageSize",
+                    "total"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a project",
+        "tags": [
+          "Project"
+        ],
+        "description": "创建项目",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "githubId": {
+                    "type": "integer"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "fullName": {
+                    "type": "string"
+                  },
+                  "url": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "language": {
+                    "type": "string"
+                  },
+                  "stars": {
+                    "type": "integer"
+                  },
+                  "forks": {
+                    "type": "integer"
+                  },
+                  "lastCommit": {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  "notes": {
+                    "type": "string"
+                  },
+                  "favorite": {
+                    "type": "boolean"
+                  },
+                  "archived": {
+                    "type": "boolean"
+                  },
+                  "pinned": {
+                    "type": "boolean"
+                  },
+                  "score": {
+                    "type": "integer"
+                  },
+                  "tags": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "archived": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "name"
+                      ]
+                    }
+                  },
+                  "videoLinks": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "githubId",
+                  "name",
+                  "fullName",
+                  "url"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "githubId": {
+                          "type": "integer"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "fullName": {
+                          "type": "string"
+                        },
+                        "url": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "language": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "stars": {
+                          "type": "integer"
+                        },
+                        "forks": {
+                          "type": "integer"
+                        },
+                        "lastCommit": {
+                          "anyOf": [
+                            {
+                              "format": "date-time",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "lastSyncAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "touchedAt": {
+                          "anyOf": [
+                            {
+                              "format": "date-time",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "notes": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "favorite": {
+                          "type": "boolean"
+                        },
+                        "archived": {
+                          "type": "boolean"
+                        },
+                        "pinned": {
+                          "type": "boolean"
+                        },
+                        "score": {
+                          "anyOf": [
+                            {
+                              "type": "integer"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "summaryShort": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "summaryLong": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "createdAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "deletedAt": {
+                          "anyOf": [
+                            {
+                              "format": "date-time",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "tags": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "description": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name"
+                            ]
+                          }
+                        },
+                        "videoLinks": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "githubId",
+                        "name",
+                        "fullName",
+                        "url",
+                        "stars",
+                        "forks",
+                        "lastSyncAt",
+                        "favorite",
+                        "archived",
+                        "pinned",
+                        "createdAt",
+                        "updatedAt",
+                        "tags",
+                        "videoLinks"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "message",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{id}": {
+      "get": {
+        "summary": "Get a project by id",
+        "tags": [
+          "Project"
+        ],
+        "description": "获取单个项目",
+        "parameters": [
+          {
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "githubId": {
+                          "type": "integer"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "fullName": {
+                          "type": "string"
+                        },
+                        "url": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "language": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "stars": {
+                          "type": "integer"
+                        },
+                        "forks": {
+                          "type": "integer"
+                        },
+                        "lastCommit": {
+                          "anyOf": [
+                            {
+                              "format": "date-time",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "lastSyncAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "touchedAt": {
+                          "anyOf": [
+                            {
+                              "format": "date-time",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "notes": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "favorite": {
+                          "type": "boolean"
+                        },
+                        "archived": {
+                          "type": "boolean"
+                        },
+                        "pinned": {
+                          "type": "boolean"
+                        },
+                        "score": {
+                          "anyOf": [
+                            {
+                              "type": "integer"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "summaryShort": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "summaryLong": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "createdAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "deletedAt": {
+                          "anyOf": [
+                            {
+                              "format": "date-time",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "tags": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "description": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name"
+                            ]
+                          }
+                        },
+                        "videoLinks": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "githubId",
+                        "name",
+                        "fullName",
+                        "url",
+                        "stars",
+                        "forks",
+                        "lastSyncAt",
+                        "favorite",
+                        "archived",
+                        "pinned",
+                        "createdAt",
+                        "updatedAt",
+                        "tags",
+                        "videoLinks"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "message",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Update a project",
+        "tags": [
+          "Project"
+        ],
+        "description": "更新项目",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "type": "object",
+                "properties": {
+                  "notes": {
+                    "type": "string"
+                  },
+                  "favorite": {
+                    "type": "boolean"
+                  },
+                  "archived": {
+                    "type": "boolean"
+                  },
+                  "pinned": {
+                    "type": "boolean"
+                  },
+                  "score": {
+                    "type": "integer"
+                  },
+                  "tags": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "archived": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "name"
+                      ]
+                    }
+                  },
+                  "videoLinks": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "githubId": {
+                          "type": "integer"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "fullName": {
+                          "type": "string"
+                        },
+                        "url": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "language": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "stars": {
+                          "type": "integer"
+                        },
+                        "forks": {
+                          "type": "integer"
+                        },
+                        "lastCommit": {
+                          "anyOf": [
+                            {
+                              "format": "date-time",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "lastSyncAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "touchedAt": {
+                          "anyOf": [
+                            {
+                              "format": "date-time",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "notes": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "favorite": {
+                          "type": "boolean"
+                        },
+                        "archived": {
+                          "type": "boolean"
+                        },
+                        "pinned": {
+                          "type": "boolean"
+                        },
+                        "score": {
+                          "anyOf": [
+                            {
+                              "type": "integer"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "summaryShort": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "summaryLong": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "createdAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "deletedAt": {
+                          "anyOf": [
+                            {
+                              "format": "date-time",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "tags": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "description": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name"
+                            ]
+                          }
+                        },
+                        "videoLinks": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "githubId",
+                        "name",
+                        "fullName",
+                        "url",
+                        "stars",
+                        "forks",
+                        "lastSyncAt",
+                        "favorite",
+                        "archived",
+                        "pinned",
+                        "createdAt",
+                        "updatedAt",
+                        "tags",
+                        "videoLinks"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "message",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a project",
+        "tags": [
+          "Project"
+        ],
+        "description": "删除项目",
+        "parameters": [
+          {
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/tags": {
+      "get": {
+        "summary": "Get all tags",
+        "tags": [
+          "Tag"
+        ],
+        "description": "获取所有标签",
+        "parameters": [
+          {
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "page",
+            "required": false
+          },
+          {
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "boolean"
+            },
+            "in": "query",
+            "name": "archived",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "keyword",
+            "required": false
+          },
+          {
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "createdAt"
+                  ]
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "updatedAt"
+                  ]
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "name"
+                  ]
+                }
+              ]
+            },
+            "in": "query",
+            "name": "orderBy",
+            "required": false
+          },
+          {
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "asc"
+                  ]
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "desc"
+                  ]
+                }
+              ]
+            },
+            "in": "query",
+            "name": "orderDirection",
+            "required": false
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "additionalProperties": false,
+                        "description": "标签表",
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "description": "主键，UUID",
+                            "type": "string"
+                          },
+                          "name": {
+                            "description": "标签名称（不再唯一，靠软删区分）",
+                            "type": "string"
+                          },
+                          "description": {
+                            "anyOf": [
+                              {
+                                "description": "标签描述（可选）",
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "archived": {
+                            "description": "是否归档",
+                            "type": "boolean"
+                          },
+                          "createdAt": {
+                            "format": "date-time",
+                            "description": "创建时间",
+                            "type": "string"
+                          },
+                          "updatedAt": {
+                            "format": "date-time",
+                            "description": "更新时间（自动更新）",
+                            "type": "string"
+                          },
+                          "deletedAt": {
+                            "anyOf": [
+                              {
+                                "format": "date-time",
+                                "description": "软删除时间（可选）",
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "description",
+                          "archived",
+                          "createdAt",
+                          "updatedAt",
+                          "deletedAt"
+                        ]
+                      }
+                    },
+                    "page": {
+                      "type": "number"
+                    },
+                    "pageSize": {
+                      "type": "number"
+                    },
+                    "total": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "message",
+                    "data",
+                    "page",
+                    "pageSize",
+                    "total"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a tag",
+        "tags": [
+          "Tag"
+        ],
+        "description": "创建标签",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "additionalProperties": false,
+                      "description": "标签表",
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "description": "主键，UUID",
+                          "type": "string"
+                        },
+                        "name": {
+                          "description": "标签名称（不再唯一，靠软删区分）",
+                          "type": "string"
+                        },
+                        "description": {
+                          "anyOf": [
+                            {
+                              "description": "标签描述（可选）",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "archived": {
+                          "description": "是否归档",
+                          "type": "boolean"
+                        },
+                        "createdAt": {
+                          "format": "date-time",
+                          "description": "创建时间",
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "format": "date-time",
+                          "description": "更新时间（自动更新）",
+                          "type": "string"
+                        },
+                        "deletedAt": {
+                          "anyOf": [
+                            {
+                              "format": "date-time",
+                              "description": "软删除时间（可选）",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "description",
+                        "archived",
+                        "createdAt",
+                        "updatedAt",
+                        "deletedAt"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "message",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tags/{id}": {
+      "get": {
+        "summary": "Get a tag by id",
+        "tags": [
+          "Tag"
+        ],
+        "description": "获取单个标签",
+        "parameters": [
+          {
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "allOf": [
+                        {
+                          "additionalProperties": false,
+                          "description": "标签表",
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "description": "主键，UUID",
+                              "type": "string"
+                            },
+                            "name": {
+                              "description": "标签名称（不再唯一，靠软删区分）",
+                              "type": "string"
+                            },
+                            "description": {
+                              "anyOf": [
+                                {
+                                  "description": "标签描述（可选）",
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "archived": {
+                              "description": "是否归档",
+                              "type": "boolean"
+                            },
+                            "createdAt": {
+                              "format": "date-time",
+                              "description": "创建时间",
+                              "type": "string"
+                            },
+                            "updatedAt": {
+                              "format": "date-time",
+                              "description": "更新时间（自动更新）",
+                              "type": "string"
+                            },
+                            "deletedAt": {
+                              "anyOf": [
+                                {
+                                  "format": "date-time",
+                                  "description": "软删除时间（可选）",
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name",
+                            "description",
+                            "archived",
+                            "createdAt",
+                            "updatedAt",
+                            "deletedAt"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "projects": {
+                              "type": "array",
+                              "items": {
+                                "additionalProperties": false,
+                                "description": "GitHub 项目（来自 stars 同步）与用户侧标注信息",
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "description": "主键，UUID",
+                                    "type": "string"
+                                  },
+                                  "name": {
+                                    "description": "仓库名称（如 star-organizer）",
+                                    "type": "string"
+                                  },
+                                  "fullName": {
+                                    "description": "仓库全名（如 user/star-organizer）",
+                                    "type": "string"
+                                  },
+                                  "url": {
+                                    "description": "仓库链接",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "name",
+                                  "fullName",
+                                  "url"
+                                ]
+                              }
+                            }
+                          },
+                          "required": [
+                            "projects"
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "message",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Update a tag",
+        "tags": [
+          "Tag"
+        ],
+        "description": "更新标签",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "additionalProperties": false,
+                      "description": "标签表",
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "description": "主键，UUID",
+                          "type": "string"
+                        },
+                        "name": {
+                          "description": "标签名称（不再唯一，靠软删区分）",
+                          "type": "string"
+                        },
+                        "description": {
+                          "anyOf": [
+                            {
+                              "description": "标签描述（可选）",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "archived": {
+                          "description": "是否归档",
+                          "type": "boolean"
+                        },
+                        "createdAt": {
+                          "format": "date-time",
+                          "description": "创建时间",
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "format": "date-time",
+                          "description": "更新时间（自动更新）",
+                          "type": "string"
+                        },
+                        "deletedAt": {
+                          "anyOf": [
+                            {
+                              "format": "date-time",
+                              "description": "软删除时间（可选）",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "description",
+                        "archived",
+                        "createdAt",
+                        "updatedAt",
+                        "deletedAt"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "message",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a tag",
+        "tags": [
+          "Tag"
+        ],
+        "description": "删除标签",
+        "parameters": [
+          {
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Default Response"
+          }
+        }
+      }
+    }
+  }
+}
