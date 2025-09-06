@@ -17,9 +17,24 @@ CREATE TABLE "Project" (
     "archived" BOOLEAN NOT NULL DEFAULT false,
     "pinned" BOOLEAN NOT NULL DEFAULT false,
     "score" INTEGER,
+    "summaryShort" TEXT,
+    "summaryLong" TEXT,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "deletedAt" DATETIME
+);
+
+-- CreateTable
+CREATE TABLE "AiSummary" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "projectId" TEXT NOT NULL,
+    "style" TEXT NOT NULL,
+    "content" TEXT NOT NULL,
+    "model" TEXT,
+    "lang" TEXT,
+    "tokens" INTEGER,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "AiSummary_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "Project" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
 -- CreateTable
@@ -62,6 +77,7 @@ CREATE TABLE "User" (
     "passwordHash" TEXT NOT NULL,
     "displayName" TEXT,
     "role" TEXT NOT NULL DEFAULT 'USER',
+    "tokenVersion" INTEGER NOT NULL DEFAULT 0,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -76,6 +92,7 @@ CREATE TABLE "RefreshToken" (
     "replacedByTokenId" TEXT,
     "expiresAt" DATETIME NOT NULL,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "revokedAt" DATETIME,
     "ip" TEXT,
     "userAgent" TEXT,
     CONSTRAINT "RefreshToken_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
@@ -141,6 +158,12 @@ CREATE INDEX "Project_touchedAt_idx" ON "Project"("touchedAt");
 CREATE INDEX "Project_name_idx" ON "Project"("name");
 
 -- CreateIndex
+CREATE INDEX "AiSummary_projectId_createdAt_idx" ON "AiSummary"("projectId", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "AiSummary_style_idx" ON "AiSummary"("style");
+
+-- CreateIndex
 CREATE INDEX "Tag_archived_createdAt_idx" ON "Tag"("archived", "createdAt");
 
 -- CreateIndex
@@ -165,6 +188,9 @@ CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 CREATE INDEX "User_createdAt_idx" ON "User"("createdAt");
 
 -- CreateIndex
+CREATE INDEX "User_tokenVersion_idx" ON "User"("tokenVersion");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "RefreshToken_tokenHash_key" ON "RefreshToken"("tokenHash");
 
 -- CreateIndex
@@ -175,6 +201,9 @@ CREATE INDEX "RefreshToken_userId_idx" ON "RefreshToken"("userId");
 
 -- CreateIndex
 CREATE INDEX "RefreshToken_revoked_expiresAt_idx" ON "RefreshToken"("revoked", "expiresAt");
+
+-- CreateIndex
+CREATE INDEX "RefreshToken_revoked_revokedAt_idx" ON "RefreshToken"("revoked", "revokedAt");
 
 -- CreateIndex
 CREATE INDEX "SyncState_source_idx" ON "SyncState"("source");
