@@ -11,6 +11,7 @@ import {
   MAINTENANCE_JOB,
   MAINTENANCE_QUEUE,
 } from '../constants/queueNames'
+import { AI_SUMMARY_QUEUE, AI_SWEEP_JOB } from '../constants/queueNames'
 import crypto from 'node:crypto'
 
 async function main() {
@@ -28,9 +29,11 @@ async function main() {
 
   // Simple args parser: node script [sync] [maint]
   const argv = process.argv.slice(2)
-  console.log('Args:', argv)
-  const runSync = argv.length === 0 || argv.includes('sync')
-  const runMaint = argv.length === 0 || argv.includes('maint')
+  const flags = argv.map((a) => a.replace(/^--?/, ''))
+  console.log('Args:', argv, 'Flags:', flags)
+  const runSync = flags.length === 0 || flags.includes('sync')
+  const runMaint = flags.length === 0 || flags.includes('maint')
+  const runAi = flags.length === 0 || flags.includes('ai')
 
   // 打印运行角色与已注册 repeatable 任务
   app.log.info({ bullRole: app.config.bullRole }, 'Bull role from config')
@@ -65,6 +68,18 @@ async function main() {
     prefix: app.config.bullPrefix,
   })
   await maintEvents.waitUntilReady()
+
+  const aiEvents = new QueueEvents(AI_SUMMARY_QUEUE, {
+    connection: {
+      host: app.config.redisHost,
+      port: app.config.redisPort,
+      password: app.config.redisPassword,
+      maxRetriesPerRequest: null as unknown as number | null,
+      enableReadyCheck: true,
+    },
+    prefix: app.config.bullPrefix,
+  })
+  await aiEvents.waitUntilReady()
 
   // 入队一个测试任务（同步）
   if (runSync) {
@@ -179,8 +194,37 @@ async function main() {
     }
   }
 
+  // 入队 AI 全量扫描（根据配置的 staleDays 判定；用于测试批量 AI 摘要）
+  if (runAi) {
+    try {
+      const jobId = `ai-sweep:manual:test:${Date.now()}`
+      const sweep = await app.queues.aiSummary.add(
+        AI_SWEEP_JOB,
+        {
+          limit: 100,
+          lang: 'zh',
+          model: app.config.aiModel || 'deepseek-chat',
+          force: true,
+          staleDaysOverride: 0,
+        },
+        { jobId, removeOnComplete: true }
+      )
+      app.log.info({ id: sweep.id, jobId }, 'AI sweep job enqueued')
+
+      // 等待 sweep 完成并打印结果（enqueued 数）
+      const res = await sweep.waitUntilFinished(aiEvents, 120_000).catch((e) => {
+        app.log.error({ e }, 'AI sweep failed or timed out')
+        return null
+      })
+      if (res) app.log.info({ res }, 'AI sweep completed')
+    } catch (e) {
+      app.log.error({ e }, 'Enqueue AI sweep failed')
+    }
+  }
+
   await syncEvents.close()
   await maintEvents.close()
+  await aiEvents.close()
   await app.close()
 }
 

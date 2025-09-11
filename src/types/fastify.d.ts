@@ -23,11 +23,14 @@ declare module 'fastify' {
     queues: {
       syncStars: Queue<SyncJobData, SyncStats>
       maintenance?: Queue
+      aiSummary: Queue
     }
     // 在 bull 角色不是 worker 时不会注册 workers，故设为可选
     workers?: {
       syncStars: Worker<SyncJobData, SyncStats>
       maintenance?: Worker
+      aiSummary?: Worker
+      aiSweep?: Worker
     }
 
     // 鉴权：路由前置校验 Access Token

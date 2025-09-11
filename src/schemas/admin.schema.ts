@@ -82,3 +82,41 @@ export const ArchivedProjectDetailResponseSchema = Type.Object({
   message: Type.String(),
   data: ArchivedProjectSchema,
 })
+
+// —— AI 摘要队列 —— //
+export const AiSummaryOptionsSchema = Type.Object({
+  style: Type.Optional(
+    Type.Union([Type.Literal('short'), Type.Literal('long'), Type.Literal('both')])
+  ),
+  lang: Type.Optional(Type.Union([Type.Literal('zh'), Type.Literal('en')])),
+  model: Type.Optional(Type.String()),
+  temperature: Type.Optional(Type.Number()),
+  createTags: Type.Optional(Type.Boolean()),
+  includeReadme: Type.Optional(Type.Boolean()),
+  readmeMaxChars: Type.Optional(Type.Integer({ minimum: 500, maximum: 20000 })),
+})
+
+export const AiEnqueueBodySchema = Type.Object({
+  projectIds: Type.Array(Type.String({ format: 'uuid' }), { minItems: 1 }),
+  options: Type.Optional(AiSummaryOptionsSchema),
+  note: Type.Optional(Type.String()),
+})
+
+export const AiEnqueueResultSchema = Type.Object({
+  message: Type.String(),
+  enqueued: Type.Number(),
+})
+
+export const AiSweepBodySchema = Type.Object({
+  limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 500 })),
+  lang: Type.Optional(Type.Union([Type.Literal('zh'), Type.Literal('en')])),
+  model: Type.Optional(Type.String()),
+  force: Type.Optional(Type.Boolean()),
+  staleDaysOverride: Type.Optional(Type.Integer({ minimum: 0 })),
+})
+
+export const AiSweepResultSchema = Type.Object({
+  message: Type.String(),
+  enqueued: Type.Number(),
+  total: Type.Number(),
+})

@@ -156,6 +156,165 @@ function renderShell(body: string, title = 'GitHub Stars Notification') {
 </html>`
 }
 
+// —— AI Summary notifications —— //
+type AiProjectMeta = {
+  name: string
+  fullName?: string | null
+  url: string
+  model?: string
+  lang?: string
+  tagsCreated?: number
+  tagsLinked?: number
+}
+
+export async function sendAiProjectCompleted(
+  app: FastifyInstance,
+  jobId: string | number,
+  projectId: string,
+  meta: AiProjectMeta
+) {
+  if (!app.config.notifyEmailEnabled) return
+  const to = (app.config.mailTo || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+  if (!to.length) return
+
+  const subject = `[AI] Summary completed — ${meta.name}`
+  const body = `
+  <div class="header">AI Summary Completed <span class="ok">• success</span></div>
+  <div class="content">
+    <p>Job <code>${escapeHtml(String(jobId))}</code> completed for <code>${escapeHtml(
+      meta.name
+    )}</code>.</p>
+    <table class="kv">
+      ${tr('projectId', projectId)}
+      ${tr('name', meta.name)}
+      ${tr('fullName', meta.fullName ?? '')}
+      ${tr('url', meta.url)}
+      ${tr('model', meta.model ?? '')}
+      ${tr('lang', meta.lang ?? '')}
+      ${tr('tagsCreated', meta.tagsCreated ?? 0)}
+      ${tr('tagsLinked', meta.tagsLinked ?? 0)}
+    </table>
+    <p class="muted">GitHub Star Organizer · AI summary completed.</p>
+  </div>`
+  const html = renderShell(body, 'AI Summary Completed')
+  await app.mailer.send({ to, subject, html, text: undefined })
+}
+
+export async function sendAiProjectFailed(
+  app: FastifyInstance,
+  jobId: string | number,
+  projectId: string,
+  err: unknown
+) {
+  if (!app.config.notifyEmailEnabled) return
+  const to = (app.config.mailTo || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+  if (!to.length) return
+  const subject = `[AI] Summary failed — project:${projectId}`
+  const html = renderFailedHtml(jobId, errorMessage(err))
+  await app.mailer.send({ to, subject, html, text: undefined })
+}
+
+export async function sendAiSweepCompleted(
+  app: FastifyInstance,
+  jobId: string | number,
+  enqueued: number,
+  total: number
+) {
+  if (!app.config.notifyEmailEnabled) return
+  const to = (app.config.mailTo || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+  if (!to.length) return
+  const subject = `[AI] Sweep completed — enqueued:${enqueued}/${total}`
+  const body = `
+  <div class="header">AI Sweep Completed <span class="ok">• success</span></div>
+  <div class="content">
+    <p>Job <code>${escapeHtml(String(jobId))}</code> completed.</p>
+    <table class="kv">
+      ${tr('enqueued', enqueued)}
+      ${tr('totalCandidates', total)}
+    </table>
+    <p class="muted">GitHub Star Organizer · AI sweep report.</p>
+  </div>`
+  const html = renderShell(body, 'AI Sweep Completed')
+  await app.mailer.send({ to, subject, html, text: undefined })
+}
+
+export async function sendAiSweepFailed(
+  app: FastifyInstance,
+  jobId: string | number,
+  err: unknown
+) {
+  if (!app.config.notifyEmailEnabled) return
+  const to = (app.config.mailTo || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+  if (!to.length) return
+  const subject = `[AI] Sweep failed — job:${jobId}`
+  const html = renderFailedHtml(jobId, errorMessage(err))
+  await app.mailer.send({ to, subject, html, text: undefined })
+}
+
+// 批处理汇总：当一轮 sweep 入列的项目任务全部完成后，发送一封汇总邮件
+export async function sendAiBatchCompleted(
+  app: FastifyInstance,
+  batchId: string,
+  summary: {
+    total: number
+    ok: number
+    fail: number
+    startedAt?: number
+    finishedAt?: number
+    lang?: string
+    model?: string
+    okList?: Array<{ id: string; name: string; url?: string }>
+    failList?: Array<{ id: string; name: string; error?: string }>
+  }
+) {
+  if (!app.config.notifyEmailEnabled) return
+  const to = (app.config.mailTo || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+  if (!to.length) return
+
+  const subject = `[AI] Batch summary — ok:${summary.ok}/fail:${summary.fail}/total:${summary.total}`
+  const dur =
+    summary.startedAt && summary.finishedAt ? summary.finishedAt - summary.startedAt : undefined
+  const body = `
+  <div class="header">AI Batch Summary <span class="ok">• success</span></div>
+  <div class="content">
+    <p>Batch <code>${escapeHtml(batchId)}</code> is finished.</p>
+    <table class="kv">
+      ${tr('total', summary.total)}
+      ${tr('ok', summary.ok)}
+      ${tr('fail', summary.fail)}
+      ${tr('lang', summary.lang ?? '')}
+      ${tr('model', summary.model ?? '')}
+      ${tr('durationMs', dur ?? '-')}
+    </table>
+    <h3 style="margin-top:16px">Succeeded (sample)</h3>
+    <table class="kv">
+      ${(summary.okList || []).map((x) => tr(x.id, `${x.name}${x.url ? ' • ' + x.url : ''}`)).join('') || tr('none', '-')}
+    </table>
+    <h3 style="margin-top:16px">Failed (sample)</h3>
+    <table class="kv">
+      ${(summary.failList || []).map((x) => tr(x.id, `${x.name}${x.error ? ' • ' + escapeHtml(x.error) : ''}`)).join('') || tr('none', '-')}
+    </table>
+    <p class="muted">GitHub Star Organizer · AI batch summary.</p>
+  </div>`
+  const html = renderShell(body, 'AI Batch Summary')
+  await app.mailer.send({ to, subject, html, text: undefined })
+}
+
 /** @internal 构建同步成功 HTML */
 function renderCompletedHtml(jobId: string | number, s: SyncStats) {
   const body = `

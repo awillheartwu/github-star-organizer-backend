@@ -7,14 +7,56 @@ import {
   MAINTENANCE_JOB,
   MAINTENANCE_QUEUE,
 } from '../constants/queueNames'
+import { AI_SUMMARY_QUEUE, AI_SUMMARY_JOB, AI_SWEEP_JOB } from '../constants/queueNames'
 import type { SyncJobData, SyncStats } from '../types/sync.types'
 import type { Ctx } from '../helpers/context.helper'
 import { handleSyncStarsJob } from '../services/github/githubStar.service'
 import * as notify from '../services/notify.service'
 import { cleanupRefreshTokensService, cleanupBullmqService } from '../services/maintenance.service'
+import * as aiService from '../services/ai.service'
+import { ensureState, markSuccess, touchRun } from '../services/sync.state.service'
 
 export default fp(
   async (app) => {
+    // ---- helpers ----
+    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+    const makeCtx = (): Ctx => ({
+      prisma: app.prisma,
+      log: app.log,
+      config: app.config,
+      redis: app.redis,
+    })
+    async function awaitAiRateLimit() {
+      const limit = app.config.aiRpmLimit
+      if (!limit || limit <= 0) return
+      // simple token bucket on per-minute window (bounded wait loop)
+      let waits = 0
+      const maxWaits = 120 // up to ~2 minutes
+      while (waits < maxWaits) {
+        const now = Date.now()
+        const minute = Math.floor(now / 60000)
+        const ttl = 60 - Math.floor((now - minute * 60000) / 1000)
+        const key = `rl:ai:${minute}`
+        let n = 0
+        try {
+          n = await app.redis.incr(key)
+          if (n === 1) await app.redis.expire(key, 60)
+        } catch {
+          // if redis unavailable, do not block
+          return
+        }
+        if (n <= limit) return
+        // rollback best-effort to not consume token (optional, ignore errors)
+        try {
+          await app.redis.decr(key)
+        } catch (_e) {
+          void 0
+        }
+        const waitMs = Math.max(200, ttl * 1000 + 50)
+        await sleep(waitMs)
+        waits += 1
+      }
+    }
     // BullMQ 独立 Redis 连接（避免与 Pub/Sub/阻塞命令冲突）
     const connection = {
       host: app.config.redisHost,
@@ -49,6 +91,18 @@ export default fp(
       defaultJobOptions: { removeOnComplete: 100, removeOnFail: 500 },
     })
 
+    // AI 摘要队列
+    const aiSummaryQueue = new Queue(AI_SUMMARY_QUEUE, {
+      connection,
+      prefix: app.config.bullPrefix,
+      defaultJobOptions: {
+        attempts: 3,
+        backoff: { type: 'fixed', delay: 30_000 },
+        removeOnComplete: 1000,
+        removeOnFail: 5000,
+      },
+    })
+
     // 队列事件（可用于日志/监控）
     const syncStarsEvents = new QueueEvents(SYNC_STARS_QUEUE, {
       connection,
@@ -64,9 +118,20 @@ export default fp(
       app.log.error({ err }, '[BullMQ] QueueEvents error')
     })
 
+    const aiEvents = new QueueEvents(AI_SUMMARY_QUEUE, {
+      connection,
+      prefix: app.config.bullPrefix,
+    })
+    aiEvents.on('completed', ({ jobId }) => app.log.info(`[AI] job ${jobId} completed`))
+    aiEvents.on('failed', ({ jobId, failedReason }) =>
+      app.log.error(`[AI] job ${jobId} failed: ${failedReason}`)
+    )
+    aiEvents.on('error', (err) => app.log.error({ err }, '[AI] QueueEvents error'))
+
     // 可选启动 Worker（按角色）
     let worker: Worker<SyncJobData, SyncStats> | undefined
     let maintWorker: Worker | undefined
+    let aiWorker: Worker | undefined
     if (isWorker) {
       worker = new Worker<SyncJobData, SyncStats>(
         SYNC_STARS_QUEUE,
@@ -168,6 +233,381 @@ export default fp(
           app.log.warn({ e }, '[maintenance] notify fail mail failed')
         }
       })
+
+      // AI 摘要/扫描 worker（统一处理两个作业名，避免同队列多 worker 抢占）
+      type AiJobData =
+        | {
+            // ai-summary
+            projectId: string
+            batchId?: string
+            options?: {
+              style?: 'short' | 'long' | 'both'
+              lang?: 'zh' | 'en'
+              model?: string
+              temperature?: number
+              createTags?: boolean
+              includeReadme?: boolean
+              readmeMaxChars?: number
+              overwrite?: boolean
+            }
+          }
+        | {
+            // ai-sweep
+            limit?: number
+            lang?: 'zh' | 'en'
+            model?: string
+            force?: boolean
+            staleDaysOverride?: number
+          }
+      aiWorker = new Worker<AiJobData>(
+        AI_SUMMARY_QUEUE,
+        async (job) => {
+          if (job.name === AI_SUMMARY_JOB) {
+            const { projectId, options, batchId } = job.data as Extract<
+              AiJobData,
+              { projectId: string; batchId?: string }
+            >
+            try {
+              // 速率限制：每分钟请求上限（全局）
+              await awaitAiRateLimit()
+              const out = await aiService.summarizeProject(app, projectId, {
+                ...options,
+                readmeMaxChars: options?.readmeMaxChars ?? app.config.aiReadmeMaxChars ?? 4000,
+              })
+              // 若属于批处理：在 Redis 累加统计并在全部完成时发送一封汇总邮件
+              if (batchId) {
+                try {
+                  const bk = `ai:batch:${batchId}`
+                  await app.redis.hincrby(bk, 'ok', 1)
+                  const done = await app.redis.hincrby(bk, 'done', 1)
+                  // 采样记录前 20 条成功项
+                  const p = await app.prisma.project.findUnique({
+                    where: { id: projectId },
+                    select: { id: true, name: true, url: true },
+                  })
+                  await app.redis.lpush(
+                    `${bk}:ok`,
+                    JSON.stringify({
+                      id: p?.id || projectId,
+                      name: p?.name || '',
+                      url: p?.url || '',
+                    })
+                  )
+                  await app.redis.ltrim(`${bk}:ok`, 0, 19)
+                  const [totalStr] = await app.redis.hmget(bk, 'total')
+                  const total = Number(totalStr || '0')
+                  if (total > 0 && done >= total) {
+                    const [okStr, failStr, startedAtStr, lang, model] = await app.redis.hmget(
+                      bk,
+                      'ok',
+                      'fail',
+                      'startedAt',
+                      'lang',
+                      'model'
+                    )
+                    const ok = Number(okStr || '0')
+                    const fail = Number(failStr || '0')
+                    const startedAt = Number(startedAtStr || '0')
+                    const finishedAt = Date.now()
+                    const okListRaw = await app.redis.lrange(`${bk}:ok`, 0, 19)
+                    const failListRaw = await app.redis.lrange(`${bk}:fail`, 0, 19)
+                    const okList = okListRaw
+                      .map((s) => {
+                        try {
+                          return JSON.parse(s)
+                        } catch {
+                          return null
+                        }
+                      })
+                      .filter(Boolean) as Array<{ id: string; name: string; url?: string }>
+                    const failList = failListRaw
+                      .map((s) => {
+                        try {
+                          return JSON.parse(s)
+                        } catch {
+                          return null
+                        }
+                      })
+                      .filter(Boolean) as Array<{ id: string; name: string; error?: string }>
+                    await notify.sendAiBatchCompleted(app, batchId, {
+                      total,
+                      ok,
+                      fail,
+                      startedAt,
+                      finishedAt,
+                      lang: lang || undefined,
+                      model: model || undefined,
+                      okList,
+                      failList,
+                    })
+                    // 同步写入 SyncState 作为持久批次记录
+                    try {
+                      const key = `batch:${batchId}`
+                      const ctx = makeCtx()
+                      await ensureState(ctx, 'ai:summary', key)
+                      await touchRun(ctx, 'ai:summary', key, new Date(startedAt || Date.now()))
+                      await markSuccess(ctx, 'ai:summary', key, {
+                        finishedAt: new Date(finishedAt),
+                        stats: {
+                          scanned: total,
+                          created: ok,
+                          updated: 0,
+                          unchanged: 0,
+                          softDeleted: 0,
+                          pages: 1,
+                          startedAt: new Date(startedAt || finishedAt).toISOString(),
+                          finishedAt: new Date(finishedAt).toISOString(),
+                          durationMs: finishedAt - (startedAt || finishedAt),
+                        } as unknown as SyncStats,
+                      })
+                    } catch (e) {
+                      app.log.warn({ e }, '[AI] write batch SyncState failed')
+                    }
+                    await app.redis.del(bk, `${bk}:ok`, `${bk}:fail`).catch(() => void 0)
+                  }
+                } catch (e) {
+                  app.log.warn({ e }, '[AI] batch counter update failed')
+                }
+              }
+              return out
+            } catch (e) {
+              // 标记错误元数据（软失败记录）
+              try {
+                await app.prisma.project.update({
+                  where: { id: projectId },
+                  data: {
+                    aiSummaryError: (e as Error)?.message ?? String(e),
+                    aiSummaryErrorAt: new Date(),
+                  },
+                })
+              } catch {
+                // ignore
+              }
+              // 若属于批处理：记录失败并检查是否全部完成
+              if (batchId) {
+                const bk = `ai:batch:${batchId}`
+                try {
+                  await app.redis.hincrby(bk, 'fail', 1)
+                  const done = await app.redis.hincrby(bk, 'done', 1)
+                  const p = await app.prisma.project.findUnique({
+                    where: { id: projectId },
+                    select: { id: true, name: true },
+                  })
+                  await app.redis.lpush(
+                    `${bk}:fail`,
+                    JSON.stringify({
+                      id: p?.id || projectId,
+                      name: p?.name || '',
+                      error: (e as Error)?.message || String(e),
+                    })
+                  )
+                  await app.redis.ltrim(`${bk}:fail`, 0, 19)
+                  const [totalStr] = await app.redis.hmget(bk, 'total')
+                  const total = Number(totalStr || '0')
+                  if (total > 0 && done >= total) {
+                    const [okStr, failStr, startedAtStr, lang, model] = await app.redis.hmget(
+                      bk,
+                      'ok',
+                      'fail',
+                      'startedAt',
+                      'lang',
+                      'model'
+                    )
+                    const ok = Number(okStr || '0')
+                    const fail = Number(failStr || '0')
+                    const startedAt = Number(startedAtStr || '0')
+                    const finishedAt = Date.now()
+                    const okListRaw = await app.redis.lrange(`${bk}:ok`, 0, 19)
+                    const failListRaw = await app.redis.lrange(`${bk}:fail`, 0, 19)
+                    const okList = okListRaw
+                      .map((s) => {
+                        try {
+                          return JSON.parse(s)
+                        } catch {
+                          return null
+                        }
+                      })
+                      .filter(Boolean) as Array<{ id: string; name: string; url?: string }>
+                    const failList = failListRaw
+                      .map((s) => {
+                        try {
+                          return JSON.parse(s)
+                        } catch {
+                          return null
+                        }
+                      })
+                      .filter(Boolean) as Array<{ id: string; name: string; error?: string }>
+                    await notify.sendAiBatchCompleted(app, batchId, {
+                      total,
+                      ok,
+                      fail,
+                      startedAt,
+                      finishedAt,
+                      lang: lang || undefined,
+                      model: model || undefined,
+                      okList,
+                      failList,
+                    })
+                    // 同步写入 SyncState 作为持久批次记录
+                    try {
+                      const key = `batch:${batchId}`
+                      const ctx = makeCtx()
+                      await ensureState(ctx, 'ai:summary', key)
+                      await touchRun(ctx, 'ai:summary', key, new Date(startedAt || Date.now()))
+                      await markSuccess(ctx, 'ai:summary', key, {
+                        finishedAt: new Date(finishedAt),
+                        stats: {
+                          scanned: total,
+                          created: ok,
+                          updated: 0,
+                          unchanged: 0,
+                          softDeleted: 0,
+                          pages: 1,
+                          startedAt: new Date(startedAt || finishedAt).toISOString(),
+                          finishedAt: new Date(finishedAt).toISOString(),
+                          durationMs: finishedAt - (startedAt || finishedAt),
+                        } as unknown as SyncStats,
+                      })
+                    } catch (e) {
+                      app.log.warn({ e }, '[AI] write batch SyncState failed')
+                    }
+                    await app.redis.del(bk, `${bk}:ok`, `${bk}:fail`).catch(() => void 0)
+                  }
+                } catch {
+                  // ignore
+                }
+              }
+              throw e
+            }
+            return
+          }
+
+          if (job.name === AI_SWEEP_JOB) {
+            const data = job.data as Extract<
+              AiJobData,
+              { limit?: number } & { force?: boolean; staleDaysOverride?: number }
+            >
+            const limit = Math.max(1, Math.min(500, data?.limit ?? 100))
+            const useForce = !!data?.force
+            const staleDaysCfg = app.config.aiSummaryStaleDays ?? 365
+            const staleDays = Math.max(0, data?.staleDaysOverride ?? staleDaysCfg)
+            const staleBefore = new Date(Date.now() - staleDays * 24 * 3600 * 1000)
+
+            const where = useForce
+              ? { archived: false }
+              : {
+                  archived: false,
+                  OR: [{ aiSummarizedAt: null }, { aiSummarizedAt: { lt: staleBefore } }],
+                }
+            const candidates = await app.prisma.project.findMany({
+              where,
+              select: { id: true },
+              orderBy: { updatedAt: 'desc' },
+              take: limit,
+            })
+
+            // 初始化批处理计数（batchId 使用 sweep jobId）
+            const batchId = String(job.id)
+            const bk = `ai:batch:${batchId}`
+            if (candidates.length === 0) {
+              // 无候选：直接发送一封空汇总邮件
+              await notify.sendAiBatchCompleted(app, batchId, {
+                total: 0,
+                ok: 0,
+                fail: 0,
+                startedAt: Date.now(),
+                finishedAt: Date.now(),
+                lang: data?.lang || '',
+                model: data?.model || '',
+                okList: [],
+                failList: [],
+              })
+            } else {
+              await app.redis.hset(bk, {
+                total: candidates.length,
+                done: 0,
+                ok: 0,
+                fail: 0,
+                startedAt: Date.now(),
+                lang: data?.lang || '',
+                model: data?.model || '',
+              })
+            }
+            let enqueued = 0
+            for (const p of candidates) {
+              const jobId = `ai-summary:${p.id}:${data?.lang ?? '-'}:${data?.model ?? '-'}`
+              const existed = await aiSummaryQueue.getJob(jobId)
+              if (existed) {
+                const state = await existed.getState().catch(() => 'unknown')
+                // 正在运行/等待中的任务：跳过；已完成/失败：允许重跑（先移除再入列）
+                const runningStates = new Set([
+                  'waiting',
+                  'active',
+                  'delayed',
+                  'paused',
+                  'waiting-children',
+                ])
+                if (!runningStates.has(state)) {
+                  try {
+                    await existed.remove()
+                  } catch {
+                    // ignore remove error
+                  }
+                } else {
+                  continue
+                }
+              }
+              await aiSummaryQueue.add(
+                AI_SUMMARY_JOB,
+                { projectId: p.id, options: { lang: data?.lang, model: data?.model }, batchId },
+                { jobId }
+              )
+              enqueued += 1
+            }
+            app.log.info({ enqueued, total: candidates.length }, '[AI] sweep enqueued')
+            try {
+              await ensureState(app, 'ai:summary', 'all')
+              await markSuccess(app, 'ai:summary', 'all', {
+                stats: {
+                  pages: 1,
+                  scanned: candidates.length,
+                  created: 0,
+                  updated: 0,
+                  unchanged: 0,
+                  softDeleted: 0,
+                },
+                finishedAt: new Date(),
+              })
+            } catch {
+              // ignore
+            }
+            return { enqueued, total: candidates.length }
+          }
+
+          throw new Error(`Unknown job name: ${job.name}`)
+        },
+        {
+          connection,
+          prefix: app.config.bullPrefix,
+          concurrency: Math.max(1, app.config.aiSummaryConcurrency ?? 1),
+        }
+      )
+      aiWorker.on('error', (err) => app.log.error({ err }, '[AI] Worker error'))
+      aiWorker.on('completed', async () => {
+        // 抑制逐项目与 sweep 完成邮件；由批处理统计在全部完成时发送一封汇总
+      })
+      aiWorker.on('failed', async (job, err) => {
+        try {
+          const attemptsMade = job?.attemptsMade ?? 0
+          const maxAttempts = (job?.opts?.attempts as number | undefined) ?? 3
+          const isFinalFailure = attemptsMade >= maxAttempts
+          if (isFinalFailure && job?.id && job.name === AI_SWEEP_JOB) {
+            await notify.sendAiSweepFailed(app, job.id, err)
+          }
+        } catch (e) {
+          app.log.warn({ e }, '[AI] notify fail mail failed')
+        }
+      })
     } else {
       app.log.info(`[BullMQ] bullRole=${app.config.bullRole}; worker not started`)
     }
@@ -178,6 +618,7 @@ export default fp(
       syncStarsEvents.waitUntilReady(),
       ...(worker ? [worker.waitUntilReady()] : []),
       ...(maintWorker ? [maintWorker.waitUntilReady()] : []),
+      ...(aiWorker ? [aiWorker.waitUntilReady()] : []),
     ])
 
     // 注册定时（repeatable）增量任务（按配置），使用固定 jobId 防重复
@@ -200,24 +641,39 @@ export default fp(
       app.log.info(`[BullMQ] maintenance job registered with cron: ${app.config.maintCron}`)
     }
 
+    // 注册 AI 扫描任务（可配置开关）
+    if (isProducer && app.config.aiSummaryCron) {
+      await aiSummaryQueue.add(
+        AI_SWEEP_JOB,
+        { lang: 'zh' },
+        { jobId: 'ai-sweep:cron', repeat: { pattern: app.config.aiSummaryCron } }
+      )
+      app.log.info(`[AI] sweep job registered with cron: ${app.config.aiSummaryCron}`)
+    }
+
     // 装饰 fastify 实例，方便在 Controller/Service 使用
     app.decorate('queues', {
       syncStars: syncStarsQueue,
       maintenance: maintenanceQueue,
+      aiSummary: aiSummaryQueue,
     })
-    if (worker || maintWorker) {
+    if (worker || maintWorker || aiWorker) {
       app.decorate('workers', {
         syncStars: worker!,
         maintenance: maintWorker!,
+        aiSummary: aiWorker!,
       })
     }
 
     app.addHook('onClose', async () => {
       if (worker) await worker.close()
       if (maintWorker) await maintWorker.close()
+      if (aiWorker) await aiWorker.close()
       await syncStarsEvents.close()
+      await aiEvents.close()
       await syncStarsQueue.close()
       await maintenanceQueue.close()
+      await aiSummaryQueue.close()
     })
   },
   // 依赖 prisma/mailer，确保 worker 中可用 app.prisma 与 app.mailer（通知）

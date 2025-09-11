@@ -14,6 +14,10 @@ import {
   ArchivedProjectListQuerySchema,
   ArchivedProjectListResponseSchema,
   ArchivedProjectDetailResponseSchema,
+  AiEnqueueBodySchema,
+  AiEnqueueResultSchema,
+  AiSweepBodySchema,
+  AiSweepResultSchema,
 } from '../schemas/admin.schema'
 
 export default async function adminRoutes(fastify: FastifyInstance) {
@@ -113,5 +117,36 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       },
     },
     adminController.getArchivedProjectById
+  )
+
+  // —— AI 摘要相关 —— //
+  fastify.post(
+    '/admin/ai/summary/enqueue',
+    {
+      onRequest: [fastify.verifyAccess, fastify.roleGuard('ADMIN')],
+      schema: {
+        tags: [AdminTag],
+        summary: 'Enqueue AI summary for projects (ADMIN)',
+        body: AiEnqueueBodySchema,
+        response: { 200: AiEnqueueResultSchema },
+        security: [{ bearerAuth: [] }],
+      },
+    },
+    adminController.enqueueAiSummary
+  )
+
+  fastify.post(
+    '/admin/ai/summary/sweep',
+    {
+      onRequest: [fastify.verifyAccess, fastify.roleGuard('ADMIN')],
+      schema: {
+        tags: [AdminTag],
+        summary: 'Sweep and enqueue AI summary jobs (ADMIN)',
+        body: AiSweepBodySchema,
+        response: { 200: AiSweepResultSchema },
+        security: [{ bearerAuth: [] }],
+      },
+    },
+    adminController.enqueueAiSweep
   )
 }

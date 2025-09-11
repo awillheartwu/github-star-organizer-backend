@@ -42,13 +42,32 @@ export const ProjectPlain = Type.Object(
     score: __nullable__(Type.Integer({ description: `用户评分（可选）` })),
     summaryShort: __nullable__(Type.String({ description: `最新 AI 摘要（短）` })),
     summaryLong: __nullable__(Type.String({ description: `最新 AI 摘要（长）` })),
+    aiSummarizedAt: __nullable__(
+      Type.String({
+        format: 'date-time',
+        description: `最近一次成功生成 AI 摘要的时间（用于增量/TTL 判断）`,
+      })
+    ),
+    aiSummaryLang: __nullable__(Type.String({ description: `最近一次摘要所使用的语言` })),
+    aiSummaryModel: __nullable__(Type.String({ description: `最近一次摘要所使用的模型` })),
+    aiSummarySourceHash: __nullable__(
+      Type.String({
+        description: `最近一次摘要的输入源哈希（可选，用于精准失效识别）`,
+      })
+    ),
+    aiSummaryError: __nullable__(
+      Type.String({ description: `最近一次摘要错误信息（可选，仅用于诊断）` })
+    ),
+    aiSummaryErrorAt: __nullable__(
+      Type.String({ format: 'date-time', description: `最近一次摘要错误时间` })
+    ),
     createdAt: Type.String({ format: 'date-time', description: `创建时间` }),
     updatedAt: Type.String({
       format: 'date-time',
       description: `更新时间（自动更新）`,
     }),
     deletedAt: __nullable__(
-      Type.String({ format: 'date-time', description: `软删除��间（可选）` })
+      Type.String({ format: 'date-time', description: `软删除时间（可选）` })
     ),
   },
   {
@@ -158,6 +177,26 @@ export const ProjectWhere = Type.Partial(
           score: Type.Integer({ description: `用户评分（可选）` }),
           summaryShort: Type.String({ description: `最新 AI 摘要（短）` }),
           summaryLong: Type.String({ description: `最新 AI 摘要（长）` }),
+          aiSummarizedAt: Type.String({
+            format: 'date-time',
+            description: `最近一次成功生成 AI 摘要的时间（用于增量/TTL 判断）`,
+          }),
+          aiSummaryLang: Type.String({
+            description: `最近一次摘要所使用的语言`,
+          }),
+          aiSummaryModel: Type.String({
+            description: `最近一次摘要所使用的模型`,
+          }),
+          aiSummarySourceHash: Type.String({
+            description: `最近一次摘要的输入源哈希（可选，用于精准失效识别）`,
+          }),
+          aiSummaryError: Type.String({
+            description: `最近一次摘要错误信息（可选，仅用于诊断）`,
+          }),
+          aiSummaryErrorAt: Type.String({
+            format: 'date-time',
+            description: `最近一次摘要错误时间`,
+          }),
           createdAt: Type.String({
             format: 'date-time',
             description: `创建时间`,
@@ -168,7 +207,7 @@ export const ProjectWhere = Type.Partial(
           }),
           deletedAt: Type.String({
             format: 'date-time',
-            description: `软删除��间（可选）`,
+            description: `软删除时间（可选）`,
           }),
         },
         {
@@ -255,6 +294,26 @@ export const ProjectWhereUnique = Type.Recursive(
               score: Type.Integer({ description: `用户评分（可选）` }),
               summaryShort: Type.String({ description: `最新 AI 摘要（短）` }),
               summaryLong: Type.String({ description: `最新 AI 摘要（长）` }),
+              aiSummarizedAt: Type.String({
+                format: 'date-time',
+                description: `最近一次成功生成 AI 摘要的时间（用于增量/TTL 判断）`,
+              }),
+              aiSummaryLang: Type.String({
+                description: `最近一次摘要所使用的语言`,
+              }),
+              aiSummaryModel: Type.String({
+                description: `最近一次摘要所使用的模型`,
+              }),
+              aiSummarySourceHash: Type.String({
+                description: `最近一次摘要的输入源哈希（可选，用于精准失效识别）`,
+              }),
+              aiSummaryError: Type.String({
+                description: `最近一次摘要错误信息（可选，仅用于诊断）`,
+              }),
+              aiSummaryErrorAt: Type.String({
+                format: 'date-time',
+                description: `最近一次摘要错误时间`,
+              }),
               createdAt: Type.String({
                 format: 'date-time',
                 description: `创建时间`,
@@ -265,7 +324,7 @@ export const ProjectWhereUnique = Type.Recursive(
               }),
               deletedAt: Type.String({
                 format: 'date-time',
-                description: `软删除��间（可选）`,
+                description: `软删除时间（可选）`,
               }),
             },
             { additionalProperties: false }
@@ -300,6 +359,12 @@ export const ProjectSelect = Type.Partial(
       videoLinks: Type.Boolean(),
       summaryShort: Type.Boolean(),
       summaryLong: Type.Boolean(),
+      aiSummarizedAt: Type.Boolean(),
+      aiSummaryLang: Type.Boolean(),
+      aiSummaryModel: Type.Boolean(),
+      aiSummarySourceHash: Type.Boolean(),
+      aiSummaryError: Type.Boolean(),
+      aiSummaryErrorAt: Type.Boolean(),
       tags: Type.Boolean(),
       createdAt: Type.Boolean(),
       updatedAt: Type.Boolean(),
@@ -387,6 +452,24 @@ export const ProjectOrderBy = Type.Partial(
         additionalProperties: false,
       }),
       summaryLong: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
+        additionalProperties: false,
+      }),
+      aiSummarizedAt: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
+        additionalProperties: false,
+      }),
+      aiSummaryLang: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
+        additionalProperties: false,
+      }),
+      aiSummaryModel: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
+        additionalProperties: false,
+      }),
+      aiSummarySourceHash: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
+        additionalProperties: false,
+      }),
+      aiSummaryError: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
+        additionalProperties: false,
+      }),
+      aiSummaryErrorAt: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
         additionalProperties: false,
       }),
       createdAt: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {

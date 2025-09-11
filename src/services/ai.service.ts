@@ -1,5 +1,6 @@
 // src/services/ai.service.ts
 import type { Ctx } from '../helpers/context.helper'
+import { createHash } from 'node:crypto'
 import { generateWithProvider, type AiClientOptions } from './ai.client'
 import { AppError } from '../helpers/error.helper'
 import { HTTP_STATUS, ERROR_TYPES } from '../constants/errorCodes'
@@ -116,6 +117,32 @@ export async function summarizeProject(
     const patch: Record<string, unknown> = {}
     if (shortText) patch['summaryShort'] = shortText
     if (longText) patch['summaryLong'] = longText
+    // 元数据：记录本次生成的时间、语言、模型、输入源哈希
+    patch['aiSummarizedAt'] = new Date()
+    if (options.lang) patch['aiSummaryLang'] = options.lang
+    if (completion.model) patch['aiSummaryModel'] = completion.model
+    try {
+      const source = JSON.stringify(
+        {
+          name: project.name,
+          fullName: project.fullName,
+          url: project.url,
+          description: project.description || '',
+          language: project.language || '',
+          stars: project.stars,
+          forks: project.forks,
+          readmeExcerpt,
+        },
+        null,
+        0
+      )
+      patch['aiSummarySourceHash'] = createHash('sha256').update(source).digest('hex')
+      // 清理错误痕迹（若上次失败过）
+      patch['aiSummaryError'] = null
+      patch['aiSummaryErrorAt'] = null
+    } catch {
+      // ignore hashing failure
+    }
     if (Object.keys(patch).length) {
       await ctx.prisma.project.update({ where: { id: projectId }, data: patch })
     }
