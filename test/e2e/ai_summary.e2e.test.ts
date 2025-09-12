@@ -11,7 +11,7 @@ jest.mock('../../src/services/ai.client', () => ({
   })),
 }))
 
-describe('E2E AI Summary (USER)', () => {
+describe('E2E AI Summary (ADMIN)', () => {
   let app: FastifyInstance
   let userAT: string
 
@@ -32,7 +32,7 @@ describe('E2E AI Summary (USER)', () => {
     userAT = await getAuthToken(app, user)
   })
 
-  it('generate summary for a project and attach tags', async () => {
+  it('generate summary for a project and attach tags (admin only)', async () => {
     // prepare a project via admin
     const admin = await createTestUser('admin-ai@example.com', 'pwd123456', 'ADMIN', app)
     const adminAT = await getAuthToken(app, admin)
@@ -52,12 +52,38 @@ describe('E2E AI Summary (USER)', () => {
     const res = await app.inject({
       method: 'POST',
       url: `/ai/projects/${projId}/summary`,
-      headers: { authorization: `Bearer ${userAT}` },
+      // ADMIN is required to trigger AI summary
+      headers: { authorization: `Bearer ${adminAT}` },
       payload: { style: 'both', lang: 'zh' },
     })
     expect(res.statusCode).toBe(200)
     const body = JSON.parse(res.payload)
     expect(body.data.summaryShort).toBe('S')
     expect(body.data.summaryLong).toBe('L')
+  })
+
+  it('forbids normal user to trigger summary', async () => {
+    const admin = await createTestUser('admin-ai-2@example.com', 'pwd123456', 'ADMIN', app)
+    const adminAT = await getAuthToken(app, admin)
+    const create = await app.inject({
+      method: 'POST',
+      url: '/projects',
+      headers: { authorization: `Bearer ${adminAT}` },
+      payload: {
+        githubId: 60002,
+        name: 'ai-target-2',
+        fullName: 'user/ai-target-2',
+        url: 'https://github.com/user/ai-target-2',
+      },
+    })
+    const projId = (JSON.parse(create.payload).data as { id: string }).id
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/ai/projects/${projId}/summary`,
+      headers: { authorization: `Bearer ${userAT}` },
+      payload: { style: 'both', lang: 'zh' },
+    })
+    expect(res.statusCode).toBe(403)
   })
 })

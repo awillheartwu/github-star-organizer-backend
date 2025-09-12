@@ -62,4 +62,38 @@ describe('handleServerError', () => {
       throw new Error('unexpected payload shape')
     }
   })
+
+  test('maps Prisma record not found (P2025) to 404', () => {
+    const { reply, rec } = makeReply()
+    handleServerError(reply, { code: 'P2025' })
+    expect(rec.status).toBe(404)
+  })
+
+  test('maps Octokit secondary rate limit to 429', () => {
+    const { reply, rec } = makeReply()
+    handleServerError(reply, {
+      name: 'RequestError',
+      status: 403,
+      response: { headers: { 'retry-after': '3', 'x-ratelimit-remaining': '0' } },
+    })
+    expect(rec.status).toBe(429)
+  })
+
+  test('maps Octokit 5xx to 502', () => {
+    const { reply, rec } = makeReply()
+    handleServerError(reply, { name: 'RequestError', status: 502 })
+    expect(rec.status).toBe(502)
+  })
+
+  test('maps timeout-like RequestError to 504', () => {
+    const { reply, rec } = makeReply()
+    handleServerError(reply, { name: 'RequestError', code: 'ETIMEDOUT' })
+    expect(rec.status).toBe(504)
+  })
+
+  test('maps Redis unavailable to 503', () => {
+    const { reply, rec } = makeReply()
+    handleServerError(reply, { code: 'ECONNREFUSED' })
+    expect(rec.status).toBe(503)
+  })
 })

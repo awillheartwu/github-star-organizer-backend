@@ -15,7 +15,8 @@ export default async function aiRoutes(fastify: FastifyInstance) {
           hook: 'onRequest',
         },
       },
-      onRequest: [fastify.verifyAccess, fastify.roleGuard('USER')],
+      // 仅 ADMIN 允许触发 AI 摘要
+      onRequest: [fastify.verifyAccess, fastify.roleGuard('ADMIN')],
       schema: {
         tags: [AiTag],
         summary: 'Generate AI summary for project',

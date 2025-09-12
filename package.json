@@ -38,6 +38,8 @@
   "author": "wuhaoli",
   "license": "MIT",
   "dependencies": {
+    "@bull-board/api": "^6.0.0",
+    "@bull-board/fastify": "^6.0.0",
     "@fastify/cookie": "^11.0.2",
     "@fastify/cors": "^11.1.0",
     "@fastify/formbody": "^8.0.2",

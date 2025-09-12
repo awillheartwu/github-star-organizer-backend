@@ -10,6 +10,8 @@ import adminRoutes from '../../src/routes/admin.router'
 import aiRoutes from '../../src/routes/ai.router'
 import { TestDatabase } from './database.helper'
 import type { Redis } from 'ioredis'
+import type { Queue } from 'bullmq'
+import type { SyncJobData, SyncStats } from '../../src/types/sync.types'
 
 // 轻量 Redis stub，避免集成测试连接真实 Redis
 const redisStub = {
@@ -84,10 +86,24 @@ export async function buildTestApp(): Promise<FastifyInstance> {
     maintenance: makeQueueStub('maintenance'),
     aiSummary: makeQueueStub('ai-summary'),
   }
-  app.decorate('queues', queues)
+  // 将 stub 按 unknown → 目标声明类型断言，避免使用 any
+  app.decorate(
+    'queues',
+    queues as unknown as {
+      syncStars: Queue<SyncJobData, SyncStats>
+      maintenance?: Queue
+      aiSummary: Queue
+    }
+  )
 
   // 鉴权与 cookie/jwt
   await app.register(authPlugin)
+
+  // 队列可视化（仅在开启时注册），使用测试 stub 队列
+  if (app.config.bullUiEnabled) {
+    const bullboard = (await import('../../src/plugins/bullboard')).default
+    await app.register(bullboard)
+  }
 
   // 注册路由：auth、project、tag、admin、ai（E2E 冒烟需要）
   await app.register(authRoutes)

@@ -206,6 +206,25 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     adminController.getQueuesStatus
   )
 
+  // 在 Swagger 中提供一个跳转入口，便于通过 Authorize 后点击访问可视化界面
+  fastify.get(
+    '/admin/queues/ui-link',
+    {
+      onRequest: [fastify.verifyAccess, fastify.roleGuard('ADMIN')],
+      schema: {
+        tags: [AdminTag],
+        summary: 'Open Bull Board UI (redirect)',
+        description: '跳转到 Bull Board 可视化界面，仅限 ADMIN 访问',
+        security: [{ bearerAuth: [] }],
+      },
+    },
+    async (_req, reply) => {
+      const base = fastify.config.bullUiPath || '/admin/queues/ui'
+      const target = base.endsWith('/') ? base : base + '/'
+      return reply.redirect(target, 302)
+    }
+  )
+
   // —— 立即触发维护 —— //
   fastify.post(
     '/admin/maintenance/run',

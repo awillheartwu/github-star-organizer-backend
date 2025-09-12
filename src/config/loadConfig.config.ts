@@ -160,6 +160,17 @@ export const EnvSchema = Type.Object(
     ),
     BULL_TRIM_EVENTS: Type.Optional(Type.Number({ default: 1000, description: '保留事件条数' })),
 
+    // Bull Board（队列可视化）
+    BULL_UI_ENABLED: Type.Optional(
+      Type.Boolean({ default: false, description: '开启 Bull Board 可视化界面' })
+    ),
+    BULL_UI_PATH: Type.Optional(
+      Type.String({ default: '/admin/queues/ui', description: 'Bull Board 基础路径' })
+    ),
+    BULL_UI_READONLY: Type.Optional(
+      Type.Boolean({ default: true, description: '仅查看（禁用删除/重试等操作）' })
+    ),
+
     // 维护任务（repeatable job）
     MAINT_ENABLED: Type.Optional(Type.Boolean({ default: true, description: '开启日常维护' })),
     MAINT_CRON: Type.Optional(
@@ -267,6 +278,11 @@ export const AppConfigSchema = Type.Object(
     bullCleanFailedAfterDays: Type.Number(),
     bullTrimEvents: Type.Number(),
 
+    // Bull Board UI
+    bullUiEnabled: Type.Optional(Type.Boolean()),
+    bullUiPath: Type.Optional(Type.String()),
+    bullUiReadOnly: Type.Optional(Type.Boolean()),
+
     // 维护任务开关/时间
     maintEnabled: Type.Boolean(),
     maintCron: Type.String(),
@@ -351,6 +367,10 @@ export function loadConfig(): AppConfig {
     BULL_CLEAN_FAILED_AFTER_DAYS: process.env.BULL_CLEAN_FAILED_AFTER_DAYS,
     BULL_TRIM_EVENTS: process.env.BULL_TRIM_EVENTS,
 
+    BULL_UI_ENABLED: process.env.BULL_UI_ENABLED,
+    BULL_UI_PATH: process.env.BULL_UI_PATH,
+    BULL_UI_READONLY: process.env.BULL_UI_READONLY,
+
     MAINT_ENABLED: process.env.MAINT_ENABLED,
     MAINT_CRON: process.env.MAINT_CRON,
   }
@@ -422,6 +442,10 @@ export function loadConfig(): AppConfig {
     bullCleanCompletedAfterDays: coerced.BULL_CLEAN_COMPLETED_AFTER_DAYS ?? 3,
     bullCleanFailedAfterDays: coerced.BULL_CLEAN_FAILED_AFTER_DAYS ?? 30,
     bullTrimEvents: coerced.BULL_TRIM_EVENTS ?? 1000,
+
+    bullUiEnabled: coerced.BULL_UI_ENABLED ?? false,
+    bullUiPath: coerced.BULL_UI_PATH ?? '/admin/queues/ui',
+    bullUiReadOnly: coerced.BULL_UI_READONLY ?? true,
 
     maintEnabled: coerced.MAINT_ENABLED ?? true,
     maintCron: coerced.MAINT_CRON ?? '0 3 * * *',

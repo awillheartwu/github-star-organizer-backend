@@ -82,4 +82,24 @@ describe('E2E Admin Queues & Maintenance', () => {
     const rbody = JSON.parse(run.payload)
     expect(rbody.jobId).toBeTruthy()
   })
+
+  it('bull board UI guarded by ADMIN', async () => {
+    // admin can access HTML
+    const ui = await app.inject({
+      method: 'GET',
+      url: '/admin/queues/ui',
+      headers: { authorization: `Bearer ${adminAT}` },
+    })
+    expect([200, 302]).toContain(ui.statusCode) // bull-board may redirect to base path
+
+    // normal user forbidden
+    const user = await createTestUser('quser@example.com', 'pwd123456', 'USER', app)
+    const userAT = await getAuthToken(app, user)
+    const forbid = await app.inject({
+      method: 'GET',
+      url: '/admin/queues/ui',
+      headers: { authorization: `Bearer ${userAT}` },
+    })
+    expect(forbid.statusCode).toBe(403)
+  })
 })
