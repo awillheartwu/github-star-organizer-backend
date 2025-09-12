@@ -59,6 +59,41 @@ function getErrorCode(err: unknown): string | undefined {
   }
   return undefined
 }
+
+/**
+ * 给 Octokit RequestError 附加 meta，便于上层日志 / error.helper 观察。
+ * 不改变原始错误 message，仅添加可读字段。
+ */
+type RequestErrorWithMeta = RequestError & {
+  // 追加的元数据
+  meta?: {
+    route?: string
+    rateLimitRemaining?: number
+    rateLimitReset?: number
+    status?: number
+  }
+  // 通过索引访问原始结构（不改变 RequestError 类型定义）
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  request?: { request?: { route?: string }; url?: string }
+}
+function attachRequestMeta(err: RequestError) {
+  try {
+    const e = err as RequestErrorWithMeta
+    const headers = e.response?.headers || {}
+    const remaining = Number(headers['x-ratelimit-remaining'] || '0')
+    const reset = Number(headers['x-ratelimit-reset'] || '0')
+    const route = e.request?.request?.route || e.request?.url || undefined
+    e.meta = {
+      route,
+      rateLimitRemaining: Number.isFinite(remaining) ? remaining : undefined,
+      rateLimitReset: Number.isFinite(reset) ? reset : undefined,
+      status: e.status,
+    }
+  } catch {
+    // 忽略元数据注入失败
+  }
+}
 /**
  * @internal 轻量指数退避重试（网络瞬时错误 & 5xx）。
  */
@@ -163,6 +198,9 @@ export async function fetchStarredPage(
         retryAfterSec: Number.isFinite(retryAfter) ? retryAfter : undefined,
       }
     }
+    if (err instanceof RequestError) {
+      attachRequestMeta(err)
+    }
     throw err
   }
 }
@@ -231,7 +269,21 @@ export async function getRepoReadmeRawByFullName(ctx: Ctx, fullName: string): Pr
   try {
     const res = await octokit.repos.getReadme({ owner, repo, mediaType: { format: 'raw' } })
     return typeof res.data === 'string' ? (res.data as unknown as string) : ''
-  } catch {
+  } catch (err) {
+    if (err instanceof RequestError) {
+      attachRequestMeta(err)
+      // eslint-disable-next-line no-console
+      console.error(
+        JSON.stringify({
+          at: 'github.getReadme',
+          // 保持非致命，仅观察
+          level: 'warn',
+          message: 'Failed to fetch README (returning empty string)',
+          error: err.message,
+          meta: (err as RequestErrorWithMeta).meta,
+        })
+      )
+    }
     return ''
   }
 }

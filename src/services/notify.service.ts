@@ -19,6 +19,17 @@ function errorMessage(err: unknown): string {
  * @param stats 同步统计
  * @category Notification
  */
+async function safeSend(
+  app: FastifyInstance,
+  payload: { to: string[]; subject: string; text?: string; html?: string }
+) {
+  try {
+    await app.mailer.send(payload)
+  } catch (e) {
+    app.log.warn({ e, to: payload.to, subject: payload.subject }, '[notify] mail send failed')
+  }
+}
+
 export async function sendSyncCompleted(
   app: FastifyInstance,
   jobId: string | number,
@@ -37,7 +48,7 @@ export async function sendSyncCompleted(
     `startedAt=${stats.startedAt ?? ''}\nfinishedAt=${stats.finishedAt ?? ''}\ndurationMs=${stats.durationMs ?? ''}`
 
   const html = renderCompletedHtml(jobId, stats)
-  await app.mailer.send({ to, subject, text, html })
+  await safeSend(app, { to, subject, text, html })
 }
 
 /**
@@ -55,7 +66,7 @@ export async function sendSyncFailed(app: FastifyInstance, jobId: string | numbe
   const subject = `[GitHub Stars] Sync failed — job:${jobId}`
   const text = `Job ${jobId} failed\n\n` + errorMessage(err)
   const html = renderFailedHtml(jobId, errorMessage(err))
-  await app.mailer.send({ to, subject, text, html })
+  await safeSend(app, { to, subject, text, html })
 }
 
 // —— Maintenance (RT/BullMQ cleanup) —— //
@@ -101,7 +112,7 @@ export async function sendMaintenanceCompleted(
     `Cron=${cfg.maintCron}`
 
   const html = renderMaintenanceHtml(jobId, rt, bull, cfg)
-  await app.mailer.send({ to, subject, text, html })
+  await safeSend(app, { to, subject, text, html })
 }
 
 /**
@@ -217,7 +228,7 @@ export async function sendAiProjectFailed(
   if (!to.length) return
   const subject = `[AI] Summary failed — project:${projectId}`
   const html = renderFailedHtml(jobId, errorMessage(err))
-  await app.mailer.send({ to, subject, html, text: undefined })
+  await safeSend(app, { to, subject, html, text: undefined })
 }
 
 export async function sendAiSweepCompleted(
@@ -244,7 +255,7 @@ export async function sendAiSweepCompleted(
     <p class="muted">GitHub Star Organizer · AI sweep report.</p>
   </div>`
   const html = renderShell(body, 'AI Sweep Completed')
-  await app.mailer.send({ to, subject, html, text: undefined })
+  await safeSend(app, { to, subject, html, text: undefined })
 }
 
 export async function sendAiSweepFailed(
@@ -260,7 +271,7 @@ export async function sendAiSweepFailed(
   if (!to.length) return
   const subject = `[AI] Sweep failed — job:${jobId}`
   const html = renderFailedHtml(jobId, errorMessage(err))
-  await app.mailer.send({ to, subject, html, text: undefined })
+  await safeSend(app, { to, subject, html, text: undefined })
 }
 
 // 批处理汇总：当一轮 sweep 入列的项目任务全部完成后，发送一封汇总邮件
@@ -312,7 +323,7 @@ export async function sendAiBatchCompleted(
     <p class="muted">GitHub Star Organizer · AI batch summary.</p>
   </div>`
   const html = renderShell(body, 'AI Batch Summary')
-  await app.mailer.send({ to, subject, html, text: undefined })
+  await safeSend(app, { to, subject, html, text: undefined })
 }
 
 /** @internal 构建同步成功 HTML */

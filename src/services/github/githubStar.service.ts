@@ -11,6 +11,8 @@ import {
   markSuccess,
   touchRun,
 } from '../sync.state.service'
+import { AppError } from '../../helpers/error.helper'
+import { ERROR_TYPES, HTTP_STATUS } from '../../constants/errorCodes'
 /** @internal 将 GitHub starred 项映射为 Project 的数据结构 */
 function mapToProjectData(item: GitHubStarredItem) {
   const r = item.repo
@@ -208,9 +210,13 @@ export async function handleSyncStarsJob(ctx: Ctx, data: SyncJobData): Promise<S
         }
       }
       if (res.secondaryRateLimited) {
-        // 抛错交给 BullMQ 重试（按 backoff）
-        const retry = res.retryAfterSec ? ` retry-after=${res.retryAfterSec}s` : ''
-        throw new Error(`GitHub secondary rate limited.${retry}`)
+        // 抛错交给 BullMQ 重试（按 backoff），带上可用的元信息
+        throw new AppError(
+          'GitHub secondary rate limited',
+          HTTP_STATUS.RATE_LIMIT.statusCode,
+          ERROR_TYPES.RATE_LIMIT,
+          { retryAfterSec: res.retryAfterSec }
+        )
       }
       rateLimitRemaining = res.rateLimitRemaining ?? rateLimitRemaining
       scanned += res.items.length

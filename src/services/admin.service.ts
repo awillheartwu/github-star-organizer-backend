@@ -54,7 +54,13 @@ export async function enqueueSyncStarsService(
   // 如果同名作业还在运行/排队，返回冲突
   const existed = await queue.getJob(jobId)
   if (existed) {
-    const state = await existed.getState().catch(() => 'waiting')
+    let state: string | undefined
+    try {
+      state = await existed.getState()
+    } catch {
+      // 无法读取状态时，保守当作仍在队列中
+      state = 'waiting'
+    }
     if (state && !['completed', 'failed'].includes(state)) {
       throw new AppError(
         'Sync already enqueued or running',
@@ -65,20 +71,31 @@ export async function enqueueSyncStarsService(
     }
   }
 
-  const job = await queue.add(
-    'sync-stars',
-    {
-      options: {
-        mode: body.mode,
-        perPage: body.perPage,
-        maxPages: body.maxPages,
-        softDeleteUnstarred: body.softDeleteUnstarred,
-      },
-      actor: 'manual',
-      note: body.note,
-    },
-    { jobId, removeOnComplete: true }
-  )
+  const job = await (async () => {
+    try {
+      return await queue.add(
+        'sync-stars',
+        {
+          options: {
+            mode: body.mode,
+            perPage: body.perPage,
+            maxPages: body.maxPages,
+            softDeleteUnstarred: body.softDeleteUnstarred,
+          },
+          actor: 'manual',
+          note: body.note,
+        },
+        { jobId, removeOnComplete: true }
+      )
+    } catch (e) {
+      throw new AppError(
+        'Failed to enqueue sync job',
+        HTTP_STATUS.BAD_GATEWAY.statusCode,
+        ERROR_TYPES.EXTERNAL_SERVICE,
+        { jobId, cause: (e as Error)?.message }
+      )
+    }
+  })()
   ctx.log.info({ jobId: job.id }, '[admin] enqueue sync-stars')
   return String(job.id)
 }

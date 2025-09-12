@@ -64,6 +64,9 @@
 | BULL_CLEAN_COMPLETED_AFTER_DAYS | number | no | 3 | 清理已完成任务（天） |
 | BULL_CLEAN_FAILED_AFTER_DAYS | number | no | 30 | 清理失败任务（天） |
 | BULL_TRIM_EVENTS | number | no | 1000 | 保留事件条数 |
+| BULL_UI_ENABLED | boolean | no | false | 开启 Bull Board 可视化界面 |
+| BULL_UI_PATH | string | no | /admin/queues/ui | Bull Board 基础路径 |
+| BULL_UI_READONLY | boolean | no | true | 仅查看（禁用删除/重试等操作） |
 | MAINT_ENABLED | boolean | no | true | 开启日常维护 |
 | MAINT_CRON | string | no | 0 3 * * * | 维护任务 cron（默认 03:00） |
 
@@ -130,5 +133,8 @@
 | bullCleanCompletedAfterDays | number | yes |  |  |
 | bullCleanFailedAfterDays | number | yes |  |  |
 | bullTrimEvents | number | yes |  |  |
+| bullUiEnabled | boolean | no |  |  |
+| bullUiPath | string | no |  |  |
+| bullUiReadOnly | boolean | no |  |  |
 | maintEnabled | boolean | yes |  |  |
 | maintCron | string | yes |  |  |

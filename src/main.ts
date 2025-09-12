@@ -11,6 +11,32 @@ import fastifySwagger from '@fastify/swagger'
 import fastifySwaggerUI from '@fastify/swagger-ui'
 
 async function bootstrap() {
+  // 监听未捕获异常（结构化 JSON 输出，便于集中日志采集）
+  process.on('unhandledRejection', (reason) => {
+    // eslint-disable-next-line no-console
+    console.error(
+      JSON.stringify({
+        at: 'process.unhandledRejection',
+        level: 'error',
+        message: 'Unhandled promise rejection',
+        reason: (reason as Error)?.message || String(reason),
+        stack: (reason as Error)?.stack,
+      })
+    )
+  })
+  process.on('uncaughtException', (err) => {
+    // eslint-disable-next-line no-console
+    console.error(
+      JSON.stringify({
+        at: 'process.uncaughtException',
+        level: 'fatal',
+        message: 'Uncaught exception',
+        error: (err as Error).message,
+        stack: (err as Error).stack,
+      })
+    )
+    process.exit(1)
+  })
   const app = Fastify({
     logger: { level: config.logLevel || 'info' },
     trustProxy: config.trustProxy,
