@@ -7,6 +7,11 @@ import { SYNC_SOURCE_GITHUB_STARS, buildGithubStarsKey, getState } from './sync.
 import { createHash } from 'node:crypto'
 
 /** @internal 为手动同步参数生成短哈希（用于构建幂等 jobId） */
+/**
+ * 为手动同步参数生成短哈希（用于构建幂等 jobId）
+ * @param opts 同步选项（mode/perPage/maxPages/softDeleteUnstarred）
+ * @returns 8 位十六进制前缀（sha1）
+ */
 function hashOptions(opts: SyncJobData['options']) {
   const plain = JSON.stringify({
     mode: opts.mode,
@@ -28,6 +33,15 @@ function hashOptions(opts: SyncJobData['options']) {
  * @returns jobId 字符串
  * @throws {AppError} 已有同参数进行中的任务 (409)
  * @category Admin
+ */
+/**
+ * 手动入列 GitHub Stars 同步任务。
+ *
+ * - 根据参数生成幂等 jobId，若已有未完成任务则报 409。
+ * - 任务附带可选 note 以便审计。
+ *
+ * @throws AppError(CONFLICT) 当同参数任务仍在进行中
+ * @returns 新创建的 BullMQ jobId
  */
 export async function enqueueSyncStarsService(
   ctx: Ctx,
@@ -74,6 +88,13 @@ export async function enqueueSyncStarsService(
  * @throws {AppError} 状态不存在 (404)
  * @category Admin
  */
+/**
+ * 获取 GitHub Stars 同步的状态摘要。
+ * - 读取 SyncState（source='github:stars'，key='user:USERNAME'）
+ * - 规范化时间字段为 ISO 字符串，便于展示
+ *
+ * @throws AppError(NOT_FOUND) 当状态不存在
+ */
 export async function getSyncStateSummaryService(ctx: Ctx) {
   const source = SYNC_SOURCE_GITHUB_STARS
   const key = buildGithubStarsKey(ctx.config.githubUsername)
@@ -103,6 +124,11 @@ export async function getSyncStateSummaryService(ctx: Ctx) {
  * @param query 分页与过滤（reason、offset、limit）
  * @returns 分页结果（data/page/pageSize/total）
  * @category Admin
+ */
+/**
+ * 分页列出归档项目（只读）。
+ * @param query 支持 reason 过滤与 offset/limit 分页
+ * @returns { data, page, pageSize, total }
  */
 export async function listArchivedProjectsService(
   ctx: Ctx,
@@ -136,6 +162,10 @@ export async function listArchivedProjectsService(
  * 获取归档项目快照详情。
  * @throws {AppError} 未找到 (404)
  * @category Admin
+ */
+/**
+ * 获取归档项目快照详情。
+ * @throws AppError(NOT_FOUND) 未找到
  */
 export async function getArchivedProjectByIdService(ctx: Ctx, id: string) {
   const row = await ctx.prisma.archivedProject.findUnique({

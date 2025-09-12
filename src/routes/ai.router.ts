@@ -19,6 +19,7 @@ export default async function aiRoutes(fastify: FastifyInstance) {
       schema: {
         tags: [AiTag],
         summary: 'Generate AI summary for project',
+        description: '为项目生成 AI 摘要',
         body: BodySchema,
         response: {
           200: ResponseSchema,

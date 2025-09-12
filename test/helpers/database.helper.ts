@@ -74,6 +74,12 @@ export class TestDatabase {
         "score" INTEGER,
         "summaryShort" TEXT,
         "summaryLong" TEXT,
+        "aiSummarizedAt" DATETIME,
+        "aiSummaryLang" TEXT,
+        "aiSummaryModel" TEXT,
+        "aiSummarySourceHash" TEXT,
+        "aiSummaryError" TEXT,
+        "aiSummaryErrorAt" DATETIME,
         "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         "deletedAt" DATETIME
@@ -91,6 +97,20 @@ export class TestDatabase {
     } catch (e) {
       // 已存在则忽略
     }
+    // 新增 AI 元数据列（向后兼容旧测试 DB）
+    const addColumn = async (sql: string) => {
+      try {
+        await this.instance!.$executeRawUnsafe(sql)
+      } catch (_e) {
+        // 已存在则忽略
+      }
+    }
+    await addColumn('ALTER TABLE "Project" ADD COLUMN "aiSummarizedAt" DATETIME')
+    await addColumn('ALTER TABLE "Project" ADD COLUMN "aiSummaryLang" TEXT')
+    await addColumn('ALTER TABLE "Project" ADD COLUMN "aiSummaryModel" TEXT')
+    await addColumn('ALTER TABLE "Project" ADD COLUMN "aiSummarySourceHash" TEXT')
+    await addColumn('ALTER TABLE "Project" ADD COLUMN "aiSummaryError" TEXT')
+    await addColumn('ALTER TABLE "Project" ADD COLUMN "aiSummaryErrorAt" DATETIME')
 
     // AI 摘要历史表
     await this.instance.$executeRawUnsafe(`

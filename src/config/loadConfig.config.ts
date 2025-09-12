@@ -3,6 +3,13 @@ import { config as dotenv } from 'dotenv'
 import { Type, type Static } from '@sinclair/typebox'
 import { Value } from '@sinclair/typebox/value'
 
+/**
+ * 环境变量原始 Schema（运行时从 process.env 读取的字符串集合）。
+ *
+ * - 该 Schema 仅用于“解析 + 校验 + 注释导出”（scripts/export-config-doc.ts）。
+ * - 实际业务请通过下方 `loadConfig()` 得到强类型的 `AppConfig` 使用。
+ */
+
 // 1) 选择加载哪个 .env：先加载基础的 .env，然后加载特定环境的覆盖文件
 function loadDotenvFiles() {
   // Load base .env if present
@@ -166,6 +173,12 @@ export const EnvSchema = Type.Object(
 type Env = Static<typeof EnvSchema>
 
 // 3) 应用配置的形状暴露给代码库的其余部分
+/**
+ * 应用内部使用的强类型配置 Schema（经 `loadConfig()` 转换/归一后的形状）。
+ *
+ * - 与 `EnvSchema` 一一映射，但数值/布尔等已被转换为正确类型。
+ * - 该 Schema 也被用于导出文档（scripts/export-config-doc.ts）。
+ */
 export const AppConfigSchema = Type.Object(
   {
     env: Type.Union([
@@ -260,8 +273,15 @@ export const AppConfigSchema = Type.Object(
   },
   { additionalProperties: false }
 )
+/** 应用配置的 TypeScript 类型（供业务层引用）。 */
 export type AppConfig = Static<typeof AppConfigSchema>
 
+/**
+ * 加载多层 .env，解析并校验，返回只读的 `AppConfig`：
+ * 1. 先加载根目录 `.env`，再加载 `.env.${NODE_ENV}` 覆盖。
+ * 2. 使用 TypeBox 对 `EnvSchema` 做 Convert+Decode，将字符串转为目标类型。
+ * 3. 映射为 `AppConfig` 并断言，最后 `Object.freeze` 防止运行期被改写。
+ */
 export function loadConfig(): AppConfig {
   // Load .env files
   loadDotenvFiles()

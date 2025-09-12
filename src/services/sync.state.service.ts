@@ -2,18 +2,40 @@ import type { Ctx } from '../helpers/context.helper'
 import type { SyncStats } from '../types/sync.types'
 import type { SyncState as PrismaSyncState } from '@prisma/client'
 
+/**
+ * 持久化“同步/任务”运行状态的实体。
+ *
+ * - 通过 `(source, key)` 唯一定位一类任务（例如 `github:stars` + `user:xxx`）。
+ * - 字段包含：增量游标 `cursor`、HTTP ETag、最近一次运行/成功/失败时间、最近错误与统计信息等。
+ */
 export type SyncState = PrismaSyncState
 
 // 约定的来源与 key 生成
+/** 约定的 GitHub stars 同步来源标识 */
 export const SYNC_SOURCE_GITHUB_STARS = 'github:stars'
+/**
+ * 构造 GitHub stars 同步的状态键。
+ * @param username GitHub 用户名
+ * @returns 形如 `user:NAME` 的 key
+ */
 export function buildGithubStarsKey(username: string) {
   return `user:${username}`
 }
 
+/**
+ * 读取指定来源/键的状态（不存在返回 null）。
+ * @param ctx 请求上下文
+ * @param source 来源（如 `github:stars`/`ai:summary`）
+ * @param key 键（业务自定义）
+ */
 export async function getState(ctx: Ctx, source: string, key: string) {
   return ctx.prisma.syncState.findUnique({ where: { source_key: { source, key } } })
 }
 
+/**
+ * 确保状态存在，不存在则创建。
+ * @returns 新建或已存在的行
+ */
 export async function ensureState(ctx: Ctx, source: string, key: string) {
   return ctx.prisma.syncState.upsert({
     where: { source_key: { source, key } },
@@ -22,6 +44,9 @@ export async function ensureState(ctx: Ctx, source: string, key: string) {
   })
 }
 
+/**
+ * 更新最近一次运行时间（在任务开始时调用）。
+ */
 export async function touchRun(ctx: Ctx, source: string, key: string, when = new Date()) {
   return ctx.prisma.syncState.update({
     where: { source_key: { source, key } },
@@ -29,6 +54,10 @@ export async function touchRun(ctx: Ctx, source: string, key: string, when = new
   })
 }
 
+/**
+ * 批量设置增量同步相关的游标/ETag。
+ * 传入的字段值为 `undefined` 时将被忽略。
+ */
 export async function setCursorEtag(
   ctx: Ctx,
   source: string,
@@ -41,6 +70,9 @@ export async function setCursorEtag(
   return ctx.prisma.syncState.update({ where: { source_key: { source, key } }, data: patch })
 }
 
+/**
+ * 任务成功：记录完成时间，清空错误，并可选更新 cursor/etag 与统计信息。
+ */
 export async function markSuccess(
   ctx: Ctx,
   source: string,
@@ -68,6 +100,10 @@ export async function markSuccess(
   return ctx.prisma.syncState.update({ where: { source_key: { source, key } }, data: payload })
 }
 
+/**
+ * 任务失败：记录错误摘要与失败时间。
+ * 注意：`lastRunAt` 由 `touchRun()` 在任务开始时设置，这里不重复写入。
+ */
 export async function markError(
   ctx: Ctx,
   source: string,
@@ -78,11 +114,15 @@ export async function markError(
   const msg = normalizeErrorMessage(error)
   return ctx.prisma.syncState.update({
     where: { source_key: { source, key } },
-    // 仅标记错误；lastRunAt 由 touchRun 负责
     data: { lastErrorAt: when, lastError: msg },
   })
 }
 
+/**
+ * 统一规整未知错误对象为短消息文本，便于持久化。
+ * @param err 任意错误对象
+ * @param maxLen 最大保留长度
+ */
 export function normalizeErrorMessage(err: unknown, maxLen = 500) {
   let msg: string
   if (typeof err === 'string') {

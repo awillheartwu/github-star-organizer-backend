@@ -12,6 +12,11 @@
 | AI_API_KEY | string | no |  | AI 提供商 API Key（DeepSeek 等） |
 | AI_MODEL | string | no | deepseek-chat | AI 模型名称，如 deepseek-chat |
 | AI_TEMPERATURE | number | no | 0.3 | AI 采样温度（0~1），越大越发散 |
+| AI_SUMMARY_CONCURRENCY | number | no | 1 | AI 摘要任务并发（worker） |
+| AI_SUMMARY_CRON | string | no |  | AI 摘要批量扫描定时表达式（可空） |
+| AI_SUMMARY_STALE_DAYS | number | no | 365 | AI 摘要过期天数（TTL） |
+| AI_README_MAX_CHARS | number | no | 4000 | 读取 README 片段最大字符数 |
+| AI_RPM_LIMIT | number | no |  | AI 提供商每分钟请求上限（可空表示不限制） |
 | CORS_ORIGIN | string | no | * |  |
 | CORS_CREDENTIALS | boolean | no | false |  |
 | TRUST_PROXY | boolean | no | false |  |
@@ -74,6 +79,11 @@
 | aiApiKey | string | no |  |  |
 | aiModel | string | no |  |  |
 | aiTemperature | number | no |  |  |
+| aiSummaryConcurrency | number | no |  |  |
+| aiSummaryCron | string | no |  |  |
+| aiSummaryStaleDays | number | no |  |  |
+| aiReadmeMaxChars | number | no |  |  |
+| aiRpmLimit | number | no |  |  |
 | corsOrigin | string | yes |  |  |
 | corsCredentials | boolean | yes |  |  |
 | trustProxy | boolean | yes |  |  |

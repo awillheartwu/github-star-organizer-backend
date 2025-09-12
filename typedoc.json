@@ -3,7 +3,8 @@
   "entryPoints": [
     "src/services/**/*.ts",
     "src/helpers/**/*.ts",
-    "src/constants/**/*.ts"
+    "src/constants/**/*.ts",
+    "src/config/loadConfig.config.ts"
   ],
   // 过滤内部实现、脚本、生成代码、同步/外部 client、测试等
   "exclude": [

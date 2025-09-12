@@ -47,6 +47,45 @@ export async function buildTestApp(): Promise<FastifyInstance> {
   app.decorate('prisma', prisma)
   app.decorate('redis', redisStub)
 
+  // 轻量队列 stub，避免依赖 BullMQ/Redis
+  type JobStub = { id: string; getState: () => Promise<string>; remove: () => Promise<void> }
+  type QueueStub = {
+    add: (name: string, data?: unknown, opts?: { jobId?: string }) => Promise<{ id: string }>
+    getJob: (id: string) => Promise<JobStub | null>
+    getJobCounts: (..._args: string[]) => Promise<{
+      waiting: number
+      active: number
+      delayed: number
+      completed: number
+      failed: number
+    }>
+    waitUntilReady?: () => Promise<void>
+  }
+  const makeQueueStub = (qname: string): QueueStub => {
+    return {
+      async add(_name: string, _data?: unknown, opts?: { jobId?: string }) {
+        return { id: opts?.jobId || `${qname}:job:${Date.now()}` }
+      },
+      async getJob(_id: string) {
+        void _id
+        // 简化：默认不存在，便于测试覆盖入列路径
+        return null
+      },
+      async getJobCounts() {
+        return { waiting: 0, active: 0, delayed: 0, completed: 0, failed: 0 }
+      },
+      async waitUntilReady() {
+        return
+      },
+    }
+  }
+  const queues = {
+    syncStars: makeQueueStub('sync-stars'),
+    maintenance: makeQueueStub('maintenance'),
+    aiSummary: makeQueueStub('ai-summary'),
+  }
+  app.decorate('queues', queues)
+
   // 鉴权与 cookie/jwt
   await app.register(authPlugin)
 

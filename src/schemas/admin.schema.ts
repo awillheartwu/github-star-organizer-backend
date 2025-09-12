@@ -120,3 +120,58 @@ export const AiSweepResultSchema = Type.Object({
   enqueued: Type.Number(),
   total: Type.Number(),
 })
+
+// —— AI 批次追踪 —— //
+export const AiBatchListQuerySchema = Type.Object({
+  page: Type.Optional(Type.Integer({ minimum: 1 })),
+  pageSize: Type.Optional(Type.Integer({ minimum: 1, maximum: 100 })),
+})
+
+export const AiBatchItemSchema = Type.Object({
+  key: Type.String(),
+  lastRunAt: Type.Optional(Type.String()),
+  lastSuccessAt: Type.Optional(Type.String()),
+  statsJson: Type.Optional(Type.String()),
+  updatedAt: Type.String(),
+})
+
+export const AiBatchListResponseSchema = Type.Object({
+  message: Type.String(),
+  data: Type.Array(AiBatchItemSchema),
+  page: Type.Number(),
+  pageSize: Type.Number(),
+  total: Type.Number(),
+})
+
+export const AiBatchDetailResponseSchema = Type.Object({
+  message: Type.String(),
+  data: AiBatchItemSchema,
+})
+
+// —— 队列状态 —— //
+export const QueueCountsSchema = Type.Object({
+  waiting: Type.Number(),
+  active: Type.Number(),
+  delayed: Type.Number(),
+  completed: Type.Number(),
+  failed: Type.Number(),
+})
+
+export const QueuesStatusResponseSchema = Type.Object({
+  message: Type.String(),
+  queues: Type.Object({
+    syncStars: QueueCountsSchema,
+    aiSummary: QueueCountsSchema,
+    maintenance: QueueCountsSchema,
+  }),
+  config: Type.Object({
+    aiSummaryConcurrency: Type.Optional(Type.Number()),
+    aiRpmLimit: Type.Optional(Type.Number()),
+    syncConcurrency: Type.Optional(Type.Number()),
+  }),
+})
+
+export const MaintenanceRunResponseSchema = Type.Object({
+  message: Type.String(),
+  jobId: Type.String(),
+})

@@ -18,6 +18,11 @@ import {
   AiEnqueueResultSchema,
   AiSweepBodySchema,
   AiSweepResultSchema,
+  AiBatchListQuerySchema,
+  AiBatchListResponseSchema,
+  AiBatchDetailResponseSchema,
+  QueuesStatusResponseSchema,
+  MaintenanceRunResponseSchema,
 } from '../schemas/admin.schema'
 
 export default async function adminRoutes(fastify: FastifyInstance) {
@@ -111,6 +116,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       schema: {
         tags: [AdminTag],
         summary: 'Get archived project detail (ADMIN)',
+        description: '归档项目详情',
         params: Type.Object({ id: Type.String({ format: 'uuid' }) }),
         response: { 200: ArchivedProjectDetailResponseSchema },
         security: [{ bearerAuth: [] }],
@@ -127,6 +133,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       schema: {
         tags: [AdminTag],
         summary: 'Enqueue AI summary for projects (ADMIN)',
+        description: '为项目入列 AI 摘要任务，仅限 ADMIN 访问',
         body: AiEnqueueBodySchema,
         response: { 200: AiEnqueueResultSchema },
         security: [{ bearerAuth: [] }],
@@ -142,11 +149,76 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       schema: {
         tags: [AdminTag],
         summary: 'Sweep and enqueue AI summary jobs (ADMIN)',
+        description: '批量扫描并入列 AI 摘要任务，仅限 ADMIN 访问',
         body: AiSweepBodySchema,
         response: { 200: AiSweepResultSchema },
         security: [{ bearerAuth: [] }],
       },
     },
     adminController.enqueueAiSweep
+  )
+
+  // —— AI 批次追踪 —— //
+  fastify.get(
+    '/admin/ai/batches',
+    {
+      onRequest: [fastify.verifyAccess, fastify.roleGuard('ADMIN')],
+      schema: {
+        tags: [AdminTag],
+        summary: 'List AI batches (ADMIN)',
+        description: '列出 AI 批次，仅限 ADMIN 访问',
+        querystring: AiBatchListQuerySchema,
+        response: { 200: AiBatchListResponseSchema },
+        security: [{ bearerAuth: [] }],
+      },
+    },
+    adminController.listAiBatches
+  )
+
+  fastify.get(
+    '/admin/ai/batches/:id',
+    {
+      onRequest: [fastify.verifyAccess, fastify.roleGuard('ADMIN')],
+      schema: {
+        tags: [AdminTag],
+        summary: 'Get AI batch detail (ADMIN)',
+        description: 'AI 批次详情，仅限 ADMIN 访问',
+        response: { 200: AiBatchDetailResponseSchema },
+        security: [{ bearerAuth: [] }],
+      },
+    },
+    adminController.getAiBatchById
+  )
+
+  // —— 队列状态 —— //
+  fastify.get(
+    '/admin/queues',
+    {
+      onRequest: [fastify.verifyAccess, fastify.roleGuard('ADMIN')],
+      schema: {
+        tags: [AdminTag],
+        summary: 'Get queues status (ADMIN)',
+        description: '查询队列状态，仅限 ADMIN 访问',
+        response: { 200: QueuesStatusResponseSchema },
+        security: [{ bearerAuth: [] }],
+      },
+    },
+    adminController.getQueuesStatus
+  )
+
+  // —— 立即触发维护 —— //
+  fastify.post(
+    '/admin/maintenance/run',
+    {
+      onRequest: [fastify.verifyAccess, fastify.roleGuard('ADMIN')],
+      schema: {
+        tags: [AdminTag],
+        summary: 'Run maintenance now (ADMIN)',
+        description: '立即触发维护任务，仅限 ADMIN 访问',
+        response: { 200: MaintenanceRunResponseSchema },
+        security: [{ bearerAuth: [] }],
+      },
+    },
+    adminController.runMaintenanceNow
   )
 }

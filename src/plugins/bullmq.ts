@@ -10,7 +10,8 @@ import {
 import { AI_SUMMARY_QUEUE, AI_SUMMARY_JOB, AI_SWEEP_JOB } from '../constants/queueNames'
 import type { SyncJobData, SyncStats } from '../types/sync.types'
 import type { Ctx } from '../helpers/context.helper'
-import { handleSyncStarsJob } from '../services/github/githubStar.service'
+// Lazy-load to avoid importing ESM-only Octokit during Jest CJS runtime
+// import { handleSyncStarsJob } from '../services/github/githubStar.service'
 import * as notify from '../services/notify.service'
 import { cleanupRefreshTokensService, cleanupBullmqService } from '../services/maintenance.service'
 import * as aiService from '../services/ai.service'
@@ -147,6 +148,8 @@ export default fp(
             config: app.config,
             redis: app.redis,
           }
+          // Dynamic import to decouple ESM-only dependencies from test environment
+          const { handleSyncStarsJob } = await import('../services/github/githubStar.service')
           const stats = await handleSyncStarsJob(ctx, job.data)
           return stats
         },
@@ -657,13 +660,12 @@ export default fp(
       maintenance: maintenanceQueue,
       aiSummary: aiSummaryQueue,
     })
-    if (worker || maintWorker || aiWorker) {
-      app.decorate('workers', {
-        syncStars: worker!,
-        maintenance: maintWorker!,
-        aiSummary: aiWorker!,
-      })
-    }
+    // Always expose a workers object for uniform access in tests and runtime
+    app.decorate('workers', {
+      syncStars: worker as unknown as Worker<SyncJobData, SyncStats> | undefined,
+      maintenance: maintWorker as unknown as Worker | undefined,
+      aiSummary: aiWorker as unknown as Worker | undefined,
+    })
 
     app.addHook('onClose', async () => {
       if (worker) await worker.close()
@@ -676,6 +678,6 @@ export default fp(
       await aiSummaryQueue.close()
     })
   },
-  // 依赖 prisma/mailer，确保 worker 中可用 app.prisma 与 app.mailer（通知）
-  { name: 'bullmq', dependencies: ['redis', 'config', 'prisma', 'mailer'] }
+  // 仅强制依赖 config；其余依赖通过实例属性注入（测试可直接装饰 stub）
+  { name: 'bullmq', dependencies: ['config'] }
 )

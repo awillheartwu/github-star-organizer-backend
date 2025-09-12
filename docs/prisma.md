@@ -44,6 +44,12 @@ GitHub 项目（来自 stars 同步）与用户侧标注信息
 | videoLinks | VideoLink[] |  | 关联的视频链接（多对一） |
 | summaryShort | String? |  | 最新 AI 摘要（短） |
 | summaryLong | String? |  | 最新 AI 摘要（长） |
+| aiSummarizedAt | DateTime? |  | 最近一次成功生成 AI 摘要的时间（用于增量/TTL 判断） |
+| aiSummaryLang | String? |  | 最近一次摘要所使用的语言 |
+| aiSummaryModel | String? |  | 最近一次摘要所使用的模型 |
+| aiSummarySourceHash | String? |  | 最近一次摘要的输入源哈希（可选，用于精准失效识别） |
+| aiSummaryError | String? |  | 最近一次摘要错误信息（可选，仅用于诊断） |
+| aiSummaryErrorAt | DateTime? |  | 最近一次摘要错误时间 |
 | tags | ProjectTag[] |  | 项目关联的标签（多对多） |
 | createdAt | DateTime | @default(now()) | 创建时间 |
 | updatedAt | DateTime | @default(now()) @updatedAt | 更新时间（自动更新） |
