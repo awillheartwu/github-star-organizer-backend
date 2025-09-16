@@ -1,0 +1,17 @@
+node_modules
+.pnpm-store
+.git
+.gitignore
+Dockerfile
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+pnpm-debug.log
+coverage
+dist
+.env*
+README.md
+.docs
+.idea
+.vscode
+logs
