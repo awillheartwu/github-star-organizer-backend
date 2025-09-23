@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.2.0](https://github.com/awillheartwu/github-star-organizer-backend/compare/v1.1.0...v1.2.0) (2025-09-23)
+
+
+### Features
+
+* **dockerignore:** add dockeringnore ([aeb36af](https://github.com/awillheartwu/github-star-organizer-backend/commit/aeb36af3c78ace48e63d898462ec4fbdc81b71ae))
+* **postgres:** move datebase to postgres ([b004a56](https://github.com/awillheartwu/github-star-organizer-backend/commit/b004a5698ee713b567cf9ab47da65b2f9eac8e5e))
+
 ## [1.1.0](https://github.com/awillheartwu/github-star-organizer-backend/compare/v1.0.1...v1.1.0) (2025-09-12)
 
 
