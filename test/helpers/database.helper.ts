@@ -1,195 +1,48 @@
 // test/helpers/database.helper.ts
 import { PrismaClient } from '@prisma/client'
+import { execSync } from 'node:child_process'
+import path from 'node:path'
 
 export class TestDatabase {
   private static instance: PrismaClient | null = null
-  private static readonly TEST_DATABASE_URL = 'file:./test.db'
+  private static migrated = false
+
+  private static resolveDatabaseUrl(): string {
+    const url = process.env.TEST_DATABASE_URL || process.env.DATABASE_URL
+    if (!url) {
+      throw new Error(
+        'TEST_DATABASE_URL 或 DATABASE_URL 未设置，无法初始化测试数据库 (PostgreSQL)。'
+      )
+    }
+    return url
+  }
+
+  private static runMigrations(databaseUrl: string): void {
+    if (this.migrated) return
+
+    const repoRoot = path.resolve(__dirname, '..', '..')
+    execSync('npx prisma migrate deploy', {
+      cwd: repoRoot,
+      stdio: 'inherit',
+      env: {
+        ...process.env,
+        DATABASE_URL: databaseUrl,
+      },
+    })
+    this.migrated = true
+  }
 
   static async setup(): Promise<PrismaClient> {
     if (!this.instance) {
+      const databaseUrl = this.resolveDatabaseUrl()
+      this.runMigrations(databaseUrl)
+
       this.instance = new PrismaClient({
-        datasources: { db: { url: this.TEST_DATABASE_URL } },
+        datasources: { db: { url: databaseUrl } },
       })
-
       await this.instance.$connect()
-
-      // 手动创建表结构而不是依赖迁移
-      await this.createTables()
     }
     return this.instance
-  }
-
-  private static async createTables(): Promise<void> {
-    if (!this.instance) return
-
-    // 创建所有必要的表
-    await this.instance.$executeRawUnsafe(`
-      CREATE TABLE IF NOT EXISTS "User" (
-        "id" TEXT NOT NULL PRIMARY KEY,
-        "email" TEXT NOT NULL UNIQUE,
-        "passwordHash" TEXT NOT NULL,
-        "displayName" TEXT,
-        "role" TEXT NOT NULL DEFAULT 'USER',
-        "tokenVersion" INTEGER NOT NULL DEFAULT 0,
-        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-      )
-    `)
-
-    await this.instance.$executeRawUnsafe(`
-      CREATE TABLE IF NOT EXISTS "RefreshToken" (
-        "id" TEXT NOT NULL PRIMARY KEY,
-        "userId" TEXT NOT NULL,
-        "tokenHash" TEXT NOT NULL UNIQUE,
-        "jti" TEXT NOT NULL UNIQUE,
-        "revoked" BOOLEAN NOT NULL DEFAULT false,
-        "replacedByTokenId" TEXT,
-        "expiresAt" DATETIME NOT NULL,
-        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        "revokedAt" DATETIME,
-        "ip" TEXT,
-        "userAgent" TEXT,
-        FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE
-      )
-    `)
-
-    await this.instance.$executeRawUnsafe(`
-      CREATE TABLE IF NOT EXISTS "Project" (
-        "id" TEXT NOT NULL PRIMARY KEY,
-        "githubId" INTEGER NOT NULL UNIQUE,
-        "name" TEXT NOT NULL,
-        "fullName" TEXT NOT NULL,
-        "url" TEXT NOT NULL,
-        "description" TEXT,
-        "language" TEXT,
-        "stars" INTEGER NOT NULL DEFAULT 0,
-        "forks" INTEGER NOT NULL DEFAULT 0,
-        "lastCommit" DATETIME,
-        "lastSyncAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        "touchedAt" DATETIME,
-        "notes" TEXT,
-        "favorite" BOOLEAN NOT NULL DEFAULT false,
-        "archived" BOOLEAN NOT NULL DEFAULT false,
-        "pinned" BOOLEAN NOT NULL DEFAULT false,
-        "score" INTEGER,
-        "summaryShort" TEXT,
-        "summaryLong" TEXT,
-        "aiSummarizedAt" DATETIME,
-        "aiSummaryLang" TEXT,
-        "aiSummaryModel" TEXT,
-        "aiSummarySourceHash" TEXT,
-        "aiSummaryError" TEXT,
-        "aiSummaryErrorAt" DATETIME,
-        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        "deletedAt" DATETIME
-      )
-    `)
-
-    // 兼容旧的测试数据库文件：补充新增的列（如果不存在）
-    try {
-      await this.instance.$executeRawUnsafe('ALTER TABLE "Project" ADD COLUMN "summaryShort" TEXT')
-    } catch (e) {
-      // 已存在则忽略
-    }
-    try {
-      await this.instance.$executeRawUnsafe('ALTER TABLE "Project" ADD COLUMN "summaryLong" TEXT')
-    } catch (e) {
-      // 已存在则忽略
-    }
-    // 新增 AI 元数据列（向后兼容旧测试 DB）
-    const addColumn = async (sql: string) => {
-      try {
-        await this.instance!.$executeRawUnsafe(sql)
-      } catch (_e) {
-        // 已存在则忽略
-      }
-    }
-    await addColumn('ALTER TABLE "Project" ADD COLUMN "aiSummarizedAt" DATETIME')
-    await addColumn('ALTER TABLE "Project" ADD COLUMN "aiSummaryLang" TEXT')
-    await addColumn('ALTER TABLE "Project" ADD COLUMN "aiSummaryModel" TEXT')
-    await addColumn('ALTER TABLE "Project" ADD COLUMN "aiSummarySourceHash" TEXT')
-    await addColumn('ALTER TABLE "Project" ADD COLUMN "aiSummaryError" TEXT')
-    await addColumn('ALTER TABLE "Project" ADD COLUMN "aiSummaryErrorAt" DATETIME')
-
-    // AI 摘要历史表
-    await this.instance.$executeRawUnsafe(`
-      CREATE TABLE IF NOT EXISTS "AiSummary" (
-        "id" TEXT NOT NULL PRIMARY KEY,
-        "projectId" TEXT NOT NULL,
-        "style" TEXT NOT NULL,
-        "content" TEXT NOT NULL,
-        "model" TEXT,
-        "lang" TEXT,
-        "tokens" INTEGER,
-        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY ("projectId") REFERENCES "Project" ("id") ON DELETE CASCADE
-      )
-    `)
-
-    await this.instance.$executeRawUnsafe(`
-      CREATE TABLE IF NOT EXISTS "Tag" (
-        "id" TEXT NOT NULL PRIMARY KEY,
-        "name" TEXT NOT NULL,
-        "description" TEXT,
-        "archived" BOOLEAN NOT NULL DEFAULT false,
-        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        "deletedAt" DATETIME
-      )
-    `)
-
-    await this.instance.$executeRawUnsafe(`
-      CREATE TABLE IF NOT EXISTS "ProjectTag" (
-        "projectId" TEXT NOT NULL,
-        "tagId" TEXT NOT NULL,
-        PRIMARY KEY ("projectId", "tagId"),
-        FOREIGN KEY ("projectId") REFERENCES "Project" ("id"),
-        FOREIGN KEY ("tagId") REFERENCES "Tag" ("id")
-      )
-    `)
-
-    await this.instance.$executeRawUnsafe(`
-      CREATE TABLE IF NOT EXISTS "VideoLink" (
-        "id" TEXT NOT NULL PRIMARY KEY,
-        "url" TEXT NOT NULL,
-        "projectId" TEXT NOT NULL,
-        "archived" BOOLEAN NOT NULL DEFAULT false,
-        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        "deletedAt" DATETIME,
-        FOREIGN KEY ("projectId") REFERENCES "Project" ("id")
-      )
-    `)
-
-    await this.instance.$executeRawUnsafe(`
-      CREATE TABLE IF NOT EXISTS "SyncState" (
-        "id" TEXT NOT NULL PRIMARY KEY,
-        "source" TEXT NOT NULL,
-        "key" TEXT NOT NULL,
-        "cursor" TEXT,
-        "etag" TEXT,
-        "lastRunAt" DATETIME,
-        "lastSuccessAt" DATETIME,
-        "lastErrorAt" DATETIME,
-        "lastError" TEXT,
-        "statsJson" TEXT,
-        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE ("source", "key")
-      )
-    `)
-
-    await this.instance.$executeRawUnsafe(`
-      CREATE TABLE IF NOT EXISTS "ArchivedProject" (
-        "id" TEXT NOT NULL PRIMARY KEY,
-        "githubId" INTEGER,
-        "originalProjectId" TEXT,
-        "reason" TEXT NOT NULL,
-        "snapshot" TEXT NOT NULL,
-        "archivedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-      )
-    `)
   }
 
   static async cleanup(): Promise<void> {
@@ -202,26 +55,25 @@ export class TestDatabase {
   static async clearAll(): Promise<void> {
     if (!this.instance) return
 
-    // 按依赖关系清理表
-    const tables = [
-      'ProjectTag',
-      'VideoLink',
-      'AiSummary',
-      'RefreshToken',
-      'ArchivedProject',
-      'SyncState',
-      'Project',
-      'Tag',
-      'User',
-    ]
+    const truncateSql = `
+      TRUNCATE TABLE
+        "ProjectTag",
+        "VideoLink",
+        "AiSummary",
+        "RefreshToken",
+        "ArchivedProject",
+        "SyncState",
+        "Project",
+        "Tag",
+        "User"
+      RESTART IDENTITY CASCADE;
+    `
 
-    for (const table of tables) {
-      try {
-        await this.instance.$executeRawUnsafe(`DELETE FROM ${table}`)
-      } catch (error) {
-        // 如果表不存在，忽略错误（测试数据库可能不完整）
-        console.warn(`Warning: Could not clear table ${table}:`, error.message)
-      }
+    try {
+      await this.instance.$executeRawUnsafe(truncateSql)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.warn('[TestDatabase] 清理数据失败:', message)
     }
   }
 

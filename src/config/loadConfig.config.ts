@@ -43,7 +43,7 @@ export const EnvSchema = Type.Object(
       ],
       { default: 'info' }
     ),
-    DATABASE_URL: Type.String({ default: 'file:./dev.db' }),
+    DATABASE_URL: Type.String({ description: 'PostgreSQL connection string' }),
     AI_API_KEY: Type.Optional(Type.String({ description: 'AI 提供商 API Key（DeepSeek 等）' })),
     AI_MODEL: Type.Optional(
       Type.String({ default: 'deepseek-chat', description: 'AI 模型名称，如 deepseek-chat' })

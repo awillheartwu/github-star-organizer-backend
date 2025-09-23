@@ -8,7 +8,10 @@ const mockConfig: AppConfig = {
   port: 3999,
   fastifyCloseGraceDelay: '200',
   logLevel: 'silent',
-  databaseUrl: 'file:./test.db',
+  databaseUrl:
+    process.env.TEST_DATABASE_URL ||
+    process.env.DATABASE_URL ||
+    'postgresql://gsor_user:gsor_pass@192.168.2.198:5433/gsor_dev?schema=public',
   githubToken: 'test-github-token',
   aiApiKey: 'test-ai-key',
   aiModel: 'deepseek-chat',

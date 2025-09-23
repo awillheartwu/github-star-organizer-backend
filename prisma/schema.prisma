@@ -17,8 +17,8 @@ generator prismabox {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 /// 归档原因
@@ -108,7 +108,7 @@ model Project {
   @@index([lastCommit])
   @@index([lastSyncAt])
   @@index([touchedAt])
-  @@index([name]) // name 模糊匹配也有帮助（SQLite 里作用有限，但保留可读性）
+  @@index([name]) // name 模糊匹配也有帮助
   @@index([aiSummarizedAt])
 }
 
@@ -165,7 +165,7 @@ model Tag {
   deletedAt DateTime?
 
   @@index([archived, createdAt]) // 常用 where archived=false 排序 createdAt
-  @@index([name]) // name 模糊匹配也有帮助（SQLite 里作用有限，但保留可读性）
+  @@index([name]) // name 模糊匹配也有帮助
 }
 
 /// 项目-标签 关联表

@@ -8,7 +8,7 @@
 | PORT | number | yes | 3000 |  |
 | FASTIFY_CLOSE_GRACE_DELAY | string | yes | 500 |  |
 | LOG_LEVEL | unknown | yes | info |  |
-| DATABASE_URL | string | yes | file:./dev.db |  |
+| DATABASE_URL | string | yes |  | PostgreSQL connection string |
 | AI_API_KEY | string | no |  | AI 提供商 API Key（DeepSeek 等） |
 | AI_MODEL | string | no | deepseek-chat | AI 模型名称，如 deepseek-chat |
 | AI_TEMPERATURE | number | no | 0.3 | AI 采样温度（0~1），越大越发散 |

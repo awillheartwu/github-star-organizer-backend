@@ -9,9 +9,9 @@ CREATE TABLE "Project" (
     "language" TEXT,
     "stars" INTEGER NOT NULL DEFAULT 0,
     "forks" INTEGER NOT NULL DEFAULT 0,
-    "lastCommit" DATETIME,
-    "lastSyncAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "touchedAt" DATETIME,
+    "lastCommit" TIMESTAMP(3),
+    "lastSyncAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "touchedAt" TIMESTAMP(3),
     "notes" TEXT,
     "favorite" BOOLEAN NOT NULL DEFAULT false,
     "archived" BOOLEAN NOT NULL DEFAULT false,
@@ -19,9 +19,9 @@ CREATE TABLE "Project" (
     "score" INTEGER,
     "summaryShort" TEXT,
     "summaryLong" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "deletedAt" DATETIME
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "deletedAt" TIMESTAMP(3)
 );
 
 -- CreateTable
@@ -33,7 +33,7 @@ CREATE TABLE "AiSummary" (
     "model" TEXT,
     "lang" TEXT,
     "tokens" INTEGER,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "AiSummary_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "Project" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
@@ -43,9 +43,9 @@ CREATE TABLE "Tag" (
     "name" TEXT NOT NULL,
     "description" TEXT,
     "archived" BOOLEAN NOT NULL DEFAULT false,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "deletedAt" DATETIME
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "deletedAt" TIMESTAMP(3)
 );
 
 -- CreateTable
@@ -64,9 +64,9 @@ CREATE TABLE "VideoLink" (
     "url" TEXT NOT NULL,
     "projectId" TEXT NOT NULL,
     "archived" BOOLEAN NOT NULL DEFAULT false,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "deletedAt" DATETIME,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "deletedAt" TIMESTAMP(3),
     CONSTRAINT "VideoLink_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "Project" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
@@ -78,8 +78,8 @@ CREATE TABLE "User" (
     "displayName" TEXT,
     "role" TEXT NOT NULL DEFAULT 'USER',
     "tokenVersion" INTEGER NOT NULL DEFAULT 0,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- CreateTable
@@ -90,9 +90,9 @@ CREATE TABLE "RefreshToken" (
     "jti" TEXT NOT NULL,
     "revoked" BOOLEAN NOT NULL DEFAULT false,
     "replacedByTokenId" TEXT,
-    "expiresAt" DATETIME NOT NULL,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "revokedAt" DATETIME,
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "revokedAt" TIMESTAMP(3),
     "ip" TEXT,
     "userAgent" TEXT,
     CONSTRAINT "RefreshToken_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
@@ -105,13 +105,13 @@ CREATE TABLE "SyncState" (
     "key" TEXT NOT NULL,
     "cursor" TEXT,
     "etag" TEXT,
-    "lastRunAt" DATETIME,
-    "lastSuccessAt" DATETIME,
-    "lastErrorAt" DATETIME,
+    "lastRunAt" TIMESTAMP(3),
+    "lastSuccessAt" TIMESTAMP(3),
+    "lastErrorAt" TIMESTAMP(3),
     "lastError" TEXT,
     "statsJson" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- CreateTable
@@ -121,7 +121,7 @@ CREATE TABLE "ArchivedProject" (
     "originalProjectId" TEXT,
     "reason" TEXT NOT NULL,
     "snapshot" JSONB NOT NULL,
-    "archivedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    "archivedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- CreateIndex

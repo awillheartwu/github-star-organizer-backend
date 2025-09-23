@@ -58,11 +58,8 @@ describe('ai.service summarizeProject', () => {
     expect(res.model).toBe('ai:mock')
 
     // AiSummary history inserted
-    const rows = await prisma.$queryRawUnsafe<{ count: number }[]>(
-      'SELECT COUNT(1) as count FROM "AiSummary" WHERE projectId = ?',
-      project.id
-    )
-    expect(Number(rows[0].count)).toBeGreaterThanOrEqual(1)
+    const historyCount = await prisma.aiSummary.count({ where: { projectId: project.id } })
+    expect(historyCount).toBeGreaterThanOrEqual(1)
 
     // tags attached
     const tags = await prisma.projectTag.findMany({ where: { projectId: project.id } })

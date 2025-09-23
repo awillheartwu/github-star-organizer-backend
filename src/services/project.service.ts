@@ -418,9 +418,9 @@ export async function updateProjectService(
       const toRemove = existing.filter((u) => !incoming.includes(u))
 
       if (toAdd.length) {
-        // SQLite 不支持 skipDuplicates；若要彻底幂等可先过滤已存在的，再 createMany
         await tx.videoLink.createMany({
           data: toAdd.map((url) => ({ url, projectId: id })),
+          skipDuplicates: true,
         })
       }
       if (toRemove.length) {
