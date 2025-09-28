@@ -32,7 +32,8 @@ on:
 
 jobs:
   build-and-test:
-    runs-on: docker
+    runs-on: [self-hosted, linux, docker]
+    container: node:20-slim 
     env:
       NODE_ENV: test
       DATABASE_URL: ${{ secrets.GSOR_DATABASE_URL }}
@@ -51,7 +52,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'pnpm'
 
       - name: Enable Corepack
