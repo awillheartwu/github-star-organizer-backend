@@ -490,7 +490,7 @@ export default fp(
               AiJobData,
               { limit?: number } & { force?: boolean; staleDaysOverride?: number }
             >
-            const limit = Math.max(1, Math.min(500, data?.limit ?? 100))
+            const limit = Math.max(1, Math.min(800, data?.limit ?? 100))
             const useForce = !!data?.force
             const staleDaysCfg = app.config.aiSummaryStaleDays ?? 365
             const staleDays = Math.max(0, data?.staleDaysOverride ?? staleDaysCfg)

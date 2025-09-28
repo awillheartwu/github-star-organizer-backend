@@ -201,11 +201,11 @@ async function main() {
       const sweep = await app.queues.aiSummary.add(
         AI_SWEEP_JOB,
         {
-          limit: 100,
+          limit: 800,
           lang: 'zh',
           model: app.config.aiModel || 'deepseek-chat',
-          force: true,
-          staleDaysOverride: 0,
+          force: false,
+          // staleDaysOverride: 0,
         },
         { jobId, removeOnComplete: true }
       )

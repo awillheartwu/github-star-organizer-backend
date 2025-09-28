@@ -1,0 +1,129 @@
+name: Backend CI
+
+concurrency:
+  group: backend-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'src/**'
+      - 'prisma/**'
+      - 'test/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'tsconfig*.json'
+      - '.forgejo/workflows/backend.yml'
+      - 'Dockerfile'
+      - 'docker-compose.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'src/**'
+      - 'prisma/**'
+      - 'test/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'tsconfig*.json'
+      - '.forgejo/workflows/backend.yml'
+      - 'Dockerfile'
+      - 'docker-compose.yml'
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    env:
+      NODE_ENV: test
+      DATABASE_URL: ${{ secrets.GSOR_DATABASE_URL }}
+      TEST_DATABASE_URL: ${{ secrets.GSOR_TEST_DATABASE_URL }}
+      REDIS_HOST: ${{ secrets.GSOR_REDIS_HOST }}
+      REDIS_PORT: ${{ secrets.GSOR_REDIS_PORT }}
+      REDIS_PASSWORD: ${{ secrets.GSOR_REDIS_PASSWORD }}
+      GITHUB_TOKEN: ${{ secrets.GSOR_GITHUB_TOKEN }}
+      AI_API_KEY: ${{ secrets.GSOR_AI_API_KEY }}
+      JWT_ACCESS_SECRET: ${{ secrets.GSOR_JWT_ACCESS_SECRET }}
+      JWT_REFRESH_SECRET: ${{ secrets.GSOR_JWT_REFRESH_SECRET }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Ensure test database url
+        shell: bash
+        run: |
+          if [[ -z "${TEST_DATABASE_URL}" && -n "${DATABASE_URL}" ]]; then
+            echo "TEST_DATABASE_URL=${DATABASE_URL}" >> "$GITHUB_ENV"
+          fi
+
+      - name: Generate Prisma client
+        run: pnpm prisma generate
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Run unit tests
+        run: pnpm test
+
+      - name: Compile TypeScript
+        run: pnpm build
+
+      - name: Build container image
+        run: docker build --file Dockerfile --tag backend-ci:latest .
+
+  deploy:
+    name: Deploy to NAS (self‑hosted)
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, nas]
+
+    env:
+      # These are only used to render the .env.production file below
+      ENV_PRODUCTION: ${{ secrets.GSOR_ENV_PRODUCTION }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Write .env.production from secret
+        shell: bash
+        run: |
+          if [[ -z "${ENV_PRODUCTION}" ]]; then
+            echo "GSOR_ENV_PRODUCTION secret is empty; aborting" >&2
+            exit 1
+          fi
+          printf '%s\n' "${ENV_PRODUCTION}" > .env.production
+          echo "Wrote $(wc -l < .env.production) lines to .env.production"
+
+      - name: Docker Compose up (rebuild)
+        shell: bash
+        run: |
+          docker compose -f docker-compose.yml down --remove-orphans || true
+          docker compose -f docker-compose.yml up -d --build
+
+      - name: Wait for health
+        shell: bash
+        run: |
+          set -e
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:3030/healthz >/dev/null; then
+              echo "Service is healthy"
+              exit 0
+            fi
+            echo "Waiting for service... ($i/30)"
+            sleep 2
+          done
+          echo "Service failed to become healthy" >&2
+          docker compose logs --no-color api || true
+          exit 1
