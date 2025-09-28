@@ -6,7 +6,7 @@ concurrency:
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
     paths:
       - 'src/**'
       - 'prisma/**'
@@ -18,7 +18,7 @@ on:
       - 'Dockerfile'
       - 'docker-compose.yml'
   pull_request:
-    branches: [ main ]
+    branches: [main]
     paths:
       - 'src/**'
       - 'prisma/**'
@@ -33,7 +33,7 @@ on:
 jobs:
   build-and-test:
     runs-on: [self-hosted, linux, docker]
-    container: node:22-slim 
+    container: node:22-slim
     env:
       NODE_ENV: test
       DATABASE_URL: ${{ secrets.GSOR_DATABASE_URL }}
@@ -57,6 +57,18 @@ jobs:
 
       - name: Enable Corepack
         run: corepack enable
+
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
