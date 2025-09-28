@@ -54,6 +54,7 @@ jobs:
         with:
           node-version: 22
           cache: 'pnpm'
+          token: ${{ secrets.GSOR_GITHUB_TOKEN }}
 
       - name: Enable Corepack
         run: corepack enable
