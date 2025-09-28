@@ -86,7 +86,7 @@ jobs:
     name: Deploy to NAS (self‑hosted)
     needs: build-and-test
     if: github.ref == 'refs/heads/main'
-    runs-on: [self-hosted, nas]
+    runs-on: [self-hosted]
 
     env:
       # These are only used to render the .env.production file below
