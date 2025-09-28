@@ -33,7 +33,7 @@ on:
 jobs:
   build-and-test:
     runs-on: [self-hosted, linux, docker]
-    container: node:20-slim 
+    container: node:22-slim 
     env:
       NODE_ENV: test
       DATABASE_URL: ${{ secrets.GSOR_DATABASE_URL }}
