@@ -156,15 +156,10 @@ jobs:
   build-image:
     name: Build container image
     needs: build-and-test
-    runs-on: [self-hosted, host]
+    runs-on: [self-hosted, host]   # 关键：用 shell runner 的唯一标签
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      # 如需登录私有镜像仓库，解开并配置：
-      # - name: Docker login
-      #   run: echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login -u "${{ secrets.REGISTRY_USERNAME }}" --password-stdin your.registry
-
       - name: Build image
         run: docker build -f Dockerfile -t backend-ci:latest .
 
