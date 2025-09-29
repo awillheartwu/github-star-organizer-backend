@@ -45,6 +45,69 @@ jobs:
       AI_API_KEY: ${{ secrets.GSOR_AI_API_KEY }}
       JWT_ACCESS_SECRET: ${{ secrets.GSOR_JWT_ACCESS_SECRET }}
       JWT_REFRESH_SECRET: ${{ secrets.GSOR_JWT_REFRESH_SECRET }}
+
+      # 非敏感变量，直接内联
+      PORT: 3999
+      FASTIFY_CLOSE_GRACE_DELAY: 200
+      LOG_LEVEL: silent
+      CORS_ORIGIN: '*'
+      CORS_CREDENTIALS: false
+      TRUST_PROXY: false
+      BODY_LIMIT: 1048576
+      HELMET_CSP: false
+
+      JWT_ACCESS_EXPIRES: 15m
+      JWT_REFRESH_EXPIRES: 7d
+      AUTH_COOKIE_NAME: rt
+      AUTH_COOKIE_SECURE: false
+      AUTH_COOKIE_SAME_SITE: lax
+      AUTH_ALLOW_REGISTRATION: true
+
+      RATE_LIMIT_WINDOW: 60000
+      RATE_LIMIT_MAX: 20
+
+      BULL_PREFIX: gsor-test
+      BULL_ROLE: producer
+
+      GITHUB_USERNAME: dummy
+      SYNC_STARS_CRON: '0 5 * * *'
+      SYNC_CONCURRENCY: 1
+      SYNC_JOB_ATTEMPTS: 1
+      SYNC_JOB_BACKOFF_MS: 1000
+      SYNC_PER_PAGE: 10
+      SYNC_MAX_PAGES: 0
+      SYNC_SOFT_DELETE_UNSTARRED: false
+      SYNC_REQUEST_TIMEOUT: 1000
+
+      NOTIFY_EMAIL_ENABLED: false
+
+      RT_EXPIRED_CLEAN_AFTER_DAYS: 0
+      RT_REVOKED_RETENTION_DAYS: 7
+      RT_CLEAN_BATCH: 100
+      RT_CLEAN_DRY_RUN: true
+      BULL_DRY_RUN: true
+      BULL_CLEAN_COMPLETED_AFTER_DAYS: 3
+      BULL_CLEAN_FAILED_AFTER_DAYS: 30
+      BULL_TRIM_EVENTS: 500
+      MAINT_ENABLED: false
+      MAINT_CRON: '0 3 * * *'
+
+      AI_SUMMARY_MIN_INTERVAL_MS: 1000
+      AI_SUMMARY_ATTEMPTS: 1
+      AI_SUMMARY_BACKOFF_MS: 500
+      AI_SUMMARY_CONCURRENCY: 1
+      AI_SUMMARY_CRON: '0 4 * * *'
+      AI_SUMMARY_SCAN_ENABLED: true
+      AI_SUMMARY_BATCH_SIZE: 50
+      AI_SUMMARY_REGENERATE_DAYS: 1
+      AI_SUMMARY_INITIAL_BACKFILL_DAYS: 30
+      AI_SUMMARY_STALE_DAYS: 1
+      AI_README_MAX_CHARS: 1000
+      AI_RPM_LIMIT: ''
+
+      BULL_UI_ENABLED: true
+      BULL_UI_PATH: /admin/queues/ui
+      BULL_UI_READONLY: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4
