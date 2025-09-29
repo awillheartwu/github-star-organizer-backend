@@ -1,8 +1,8 @@
-import { Type } from '@sinclair/typebox'
+import { Type } from "@sinclair/typebox";
 
-import { __transformDate__ } from './__transformDate__'
+import { __transformDate__ } from "./__transformDate__";
 
-import { __nullable__ } from './__nullable__'
+import { __nullable__ } from "./__nullable__";
 
 export const RefreshTokenPlain = Type.Object(
   {
@@ -12,16 +12,18 @@ export const RefreshTokenPlain = Type.Object(
     jti: Type.String(),
     revoked: Type.Boolean({ description: `只存哈希（避免明文落库）` }),
     replacedByTokenId: __nullable__(
-      Type.String({ description: `替换的令牌 ID（可选，用于单点登录等）` })
+      Type.String({ description: `替换的令牌 ID（可选，用于单点登录等）` }),
     ),
-    expiresAt: Type.String({ format: 'date-time', description: `过期时间` }),
-    createdAt: Type.String({ format: 'date-time' }),
-    revokedAt: __nullable__(Type.String({ format: 'date-time' })),
-    ip: __nullable__(Type.String({ description: `ip 地址与 user-agent（可选，用于审计）` })),
+    expiresAt: Type.String({ format: "date-time", description: `过期时间` }),
+    createdAt: Type.String({ format: "date-time" }),
+    revokedAt: __nullable__(Type.String({ format: "date-time" })),
+    ip: __nullable__(
+      Type.String({ description: `ip 地址与 user-agent（可选，用于审计）` }),
+    ),
     userAgent: __nullable__(Type.String()),
   },
-  { additionalProperties: false, description: `Refresh Token（仅存哈希）` }
-)
+  { additionalProperties: false, description: `Refresh Token（仅存哈希）` },
+);
 
 export const RefreshTokenRelations = Type.Object(
   {
@@ -31,29 +33,35 @@ export const RefreshTokenRelations = Type.Object(
         email: Type.String({ description: `用户邮箱` }),
         passwordHash: Type.String({ description: `密码哈希` }),
         displayName: __nullable__(Type.String({ description: `显示名称` })),
-        role: Type.Union([Type.Literal('USER'), Type.Literal('ADMIN')], {
+        role: Type.Union([Type.Literal("USER"), Type.Literal("ADMIN")], {
           additionalProperties: false,
           description: `用户角色`,
         }),
         tokenVersion: Type.Integer({
           description: `令牌版本（用于刷新令牌的无状态撤销）`,
         }),
-        createdAt: Type.String({ format: 'date-time' }),
-        updatedAt: Type.String({ format: 'date-time' }),
+        createdAt: Type.String({ format: "date-time" }),
+        updatedAt: Type.String({ format: "date-time" }),
       },
-      { additionalProperties: false, description: `用户表` }
+      { additionalProperties: false, description: `用户表` },
     ),
   },
-  { additionalProperties: false, description: `Refresh Token（仅存哈希）` }
-)
+  { additionalProperties: false, description: `Refresh Token（仅存哈希）` },
+);
 
 export const RefreshTokenWhere = Type.Partial(
   Type.Recursive(
     (Self) =>
       Type.Object(
         {
-          AND: Type.Union([Self, Type.Array(Self, { additionalProperties: false })]),
-          NOT: Type.Union([Self, Type.Array(Self, { additionalProperties: false })]),
+          AND: Type.Union([
+            Self,
+            Type.Array(Self, { additionalProperties: false }),
+          ]),
+          NOT: Type.Union([
+            Self,
+            Type.Array(Self, { additionalProperties: false }),
+          ]),
           OR: Type.Array(Self, { additionalProperties: false }),
           id: Type.String(),
           userId: Type.String({ description: `所属用户` }),
@@ -64,11 +72,11 @@ export const RefreshTokenWhere = Type.Partial(
             description: `替换的令牌 ID（可选，用于单点登录等）`,
           }),
           expiresAt: Type.String({
-            format: 'date-time',
+            format: "date-time",
             description: `过期时间`,
           }),
-          createdAt: Type.String({ format: 'date-time' }),
-          revokedAt: Type.String({ format: 'date-time' }),
+          createdAt: Type.String({ format: "date-time" }),
+          revokedAt: Type.String({ format: "date-time" }),
           ip: Type.String({
             description: `ip 地址与 user-agent（可选，用于审计）`,
           }),
@@ -77,11 +85,11 @@ export const RefreshTokenWhere = Type.Partial(
         {
           additionalProperties: false,
           description: `Refresh Token（仅存哈希）`,
-        }
+        },
       ),
-    { $id: 'RefreshToken' }
-  )
-)
+    { $id: "RefreshToken" },
+  ),
+);
 
 export const RefreshTokenWhereUnique = Type.Recursive(
   (Self) =>
@@ -99,9 +107,9 @@ export const RefreshTokenWhereUnique = Type.Recursive(
             {
               additionalProperties: false,
               description: `Refresh Token（仅存哈希）`,
-            }
+            },
           ),
-          { additionalProperties: false }
+          { additionalProperties: false },
         ),
         Type.Union(
           [
@@ -113,15 +121,21 @@ export const RefreshTokenWhereUnique = Type.Recursive(
             }),
             Type.Object({ jti: Type.String() }),
           ],
-          { additionalProperties: false }
+          { additionalProperties: false },
         ),
         Type.Partial(
           Type.Object({
-            AND: Type.Union([Self, Type.Array(Self, { additionalProperties: false })]),
-            NOT: Type.Union([Self, Type.Array(Self, { additionalProperties: false })]),
+            AND: Type.Union([
+              Self,
+              Type.Array(Self, { additionalProperties: false }),
+            ]),
+            NOT: Type.Union([
+              Self,
+              Type.Array(Self, { additionalProperties: false }),
+            ]),
             OR: Type.Array(Self, { additionalProperties: false }),
           }),
-          { additionalProperties: false }
+          { additionalProperties: false },
         ),
         Type.Partial(
           Type.Object(
@@ -139,24 +153,24 @@ export const RefreshTokenWhereUnique = Type.Recursive(
                 description: `替换的令牌 ID（可选，用于单点登录等）`,
               }),
               expiresAt: Type.String({
-                format: 'date-time',
+                format: "date-time",
                 description: `过期时间`,
               }),
-              createdAt: Type.String({ format: 'date-time' }),
-              revokedAt: Type.String({ format: 'date-time' }),
+              createdAt: Type.String({ format: "date-time" }),
+              revokedAt: Type.String({ format: "date-time" }),
               ip: Type.String({
                 description: `ip 地址与 user-agent（可选，用于审计）`,
               }),
               userAgent: Type.String(),
             },
-            { additionalProperties: false }
-          )
+            { additionalProperties: false },
+          ),
         ),
       ],
-      { additionalProperties: false }
+      { additionalProperties: false },
     ),
-  { $id: 'RefreshToken' }
-)
+  { $id: "RefreshToken" },
+);
 
 export const RefreshTokenSelect = Type.Partial(
   Type.Object(
@@ -175,58 +189,60 @@ export const RefreshTokenSelect = Type.Partial(
       userAgent: Type.Boolean(),
       _count: Type.Boolean(),
     },
-    { additionalProperties: false, description: `Refresh Token（仅存哈希）` }
-  )
-)
+    { additionalProperties: false, description: `Refresh Token（仅存哈希）` },
+  ),
+);
 
 export const RefreshTokenInclude = Type.Partial(
   Type.Object(
     { user: Type.Boolean(), _count: Type.Boolean() },
-    { additionalProperties: false, description: `Refresh Token（仅存哈希）` }
-  )
-)
+    { additionalProperties: false, description: `Refresh Token（仅存哈希）` },
+  ),
+);
 
 export const RefreshTokenOrderBy = Type.Partial(
   Type.Object(
     {
-      id: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
+      id: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
         additionalProperties: false,
       }),
-      userId: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
+      userId: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
         additionalProperties: false,
       }),
-      tokenHash: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
+      tokenHash: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
         additionalProperties: false,
       }),
-      jti: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
+      jti: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
         additionalProperties: false,
       }),
-      revoked: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
+      revoked: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
         additionalProperties: false,
       }),
-      replacedByTokenId: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
+      replacedByTokenId: Type.Union(
+        [Type.Literal("asc"), Type.Literal("desc")],
+        { additionalProperties: false },
+      ),
+      expiresAt: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
         additionalProperties: false,
       }),
-      expiresAt: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
+      createdAt: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
         additionalProperties: false,
       }),
-      createdAt: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
+      revokedAt: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
         additionalProperties: false,
       }),
-      revokedAt: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
+      ip: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
         additionalProperties: false,
       }),
-      ip: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
-        additionalProperties: false,
-      }),
-      userAgent: Type.Union([Type.Literal('asc'), Type.Literal('desc')], {
+      userAgent: Type.Union([Type.Literal("asc"), Type.Literal("desc")], {
         additionalProperties: false,
       }),
     },
-    { additionalProperties: false, description: `Refresh Token（仅存哈希）` }
-  )
-)
+    { additionalProperties: false, description: `Refresh Token（仅存哈希）` },
+  ),
+);
 
-export const RefreshToken = Type.Composite([RefreshTokenPlain, RefreshTokenRelations], {
-  additionalProperties: false,
-})
+export const RefreshToken = Type.Composite(
+  [RefreshTokenPlain, RefreshTokenRelations],
+  { additionalProperties: false },
+);

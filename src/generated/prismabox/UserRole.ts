@@ -1,10 +1,10 @@
-import { Type } from '@sinclair/typebox'
+import { Type } from "@sinclair/typebox";
 
-import { __transformDate__ } from './__transformDate__'
+import { __transformDate__ } from "./__transformDate__";
 
-import { __nullable__ } from './__nullable__'
+import { __nullable__ } from "./__nullable__";
 
-export const UserRole = Type.Union([Type.Literal('USER'), Type.Literal('ADMIN')], {
-  additionalProperties: false,
-  description: `用户角色`,
-})
+export const UserRole = Type.Union(
+  [Type.Literal("USER"), Type.Literal("ADMIN")],
+  { additionalProperties: false, description: `用户角色` },
+);
