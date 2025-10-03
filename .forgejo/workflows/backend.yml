@@ -156,47 +156,56 @@ jobs:
   build-image:
     name: Build container image
     needs: build-and-test
-    runs-on: [self-hosted, host]   # 关键：用 shell runner 的唯一标签
+    runs-on: [self-hosted, linux, docker]
+    env:
+      DOCKER_HOST: tcp://docker-dind:2375 # 👈 使用 dind
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
       - name: Build image
-        run: docker build -f Dockerfile -t backend-ci:latest .
+        run: |
+          docker buildx build \
+            --file Dockerfile \
+            --tag backend-ci:latest \
+            --cache-from type=local,src=/tmp/.buildx-cache \
+            --cache-to type=local,dest=/tmp/.buildx-cache-new,mode=max \
+            .
+
+      - name: Move cache
+        if: always()
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
 
   deploy:
-    name: Deploy to NAS (self‑hosted)
+    name: Deploy to NAS (self-hosted)
     needs: [build-and-test, build-image]
     if: github.ref == 'refs/heads/main'
-    runs-on: [self-hosted]
-
+    runs-on: [self-hosted, linux, docker]
     env:
-      # These are only used to render the .env.production file below
+      DOCKER_HOST: tcp://docker-dind:2375 # 👈 同样走 dind
       ENV_PRODUCTION: ${{ secrets.GSOR_ENV_PRODUCTION }}
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Write .env.production from secret
-        shell: bash
-        run: |
-          if [[ -z "${ENV_PRODUCTION}" ]]; then
-            echo "GSOR_ENV_PRODUCTION secret is empty; aborting" >&2
-            exit 1
-          fi
-          printf '%s\n' "${ENV_PRODUCTION}" > .env.production
-          echo "Wrote $(wc -l < .env.production) lines to .env.production"
-
+      - uses: actions/checkout@v4
+      - name: Write .env.production
+        run: printf '%s\n' "${ENV_PRODUCTION}" > .env.production
       - name: Docker Compose up (rebuild)
-        shell: bash
         run: |
           docker compose -f docker-compose.yml down --remove-orphans || true
           docker compose -f docker-compose.yml up -d --build
-
       - name: Wait for health
-        shell: bash
         run: |
-          set -e
           for i in {1..30}; do
             if curl -fsS http://127.0.0.1:3030/healthz >/dev/null; then
               echo "Service is healthy"
