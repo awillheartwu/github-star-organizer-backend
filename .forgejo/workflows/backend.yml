@@ -157,11 +157,16 @@ jobs:
     name: Build container image
     needs: build-and-test
     runs-on: [self-hosted, linux, docker]
+    services:
+      docker:
+        image: docker:27-dind
+        options: --privileged=true
+        env:
+          DOCKER_TLS_CERTDIR: ""
     container:
       image: node:22-slim
-      options: --network core-net # 👈 关键：与 dind 同网
     env:
-      DOCKER_HOST: tcp://docker-dind:2375
+      DOCKER_HOST: tcp://docker:2375
     steps:
       - uses: actions/checkout@v4
 
@@ -185,8 +190,8 @@ jobs:
 
       - name: Sanity check dind connectivity
         run: |
-          getent hosts docker-dind || true
-          curl -fsS http://docker-dind:2375/_ping || true
+          getent hosts docker || true
+          curl -fsS http://docker:2375/_ping || true
           docker version
 
       - name: Build image
@@ -209,11 +214,16 @@ jobs:
     needs: [build-and-test, build-image]
     if: github.ref == 'refs/heads/main'
     runs-on: [self-hosted, linux, docker]
+    services:
+      docker:
+        image: docker:27-dind
+        options: --privileged=true
+        env:
+          DOCKER_TLS_CERTDIR: ""
     container:
       image: node:22-slim
-      options: --network core-net
     env:
-      DOCKER_HOST: tcp://docker-dind:2375 # 👈 同样走 dind
+      DOCKER_HOST: tcp://docker:2375 # 由 job service dind 提供
       ENV_PRODUCTION: ${{ secrets.GSOR_ENV_PRODUCTION }}
     steps:
       - uses: actions/checkout@v4
