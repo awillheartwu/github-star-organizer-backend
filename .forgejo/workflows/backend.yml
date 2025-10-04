@@ -162,7 +162,10 @@ jobs:
     env:
       DOCKER_HOST: tcp://docker-dind:2375
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        run: |
+          git clone --depth 1 --branch ${GITHUB_REF##*/} https://github.com/${GITHUB_REPOSITORY}.git .
+          git checkout ${GITHUB_SHA}
 
       - name: Build image
         run: |
@@ -186,10 +189,13 @@ jobs:
       DOCKER_HOST: tcp://docker-dind:2375
       ENV_PRODUCTION: ${{ secrets.GSOR_ENV_PRODUCTION }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Install tools
+        run: apk add --no-cache curl git
 
-      - name: Install curl
-        run: apk add --no-cache curl
+      - name: Checkout code
+        run: |
+          git clone --depth 1 --branch ${GITHUB_REF##*/} https://github.com/${GITHUB_REPOSITORY}.git .
+          git checkout ${GITHUB_SHA}
 
       - name: Write .env.production
         run: printf '%s\n' "${ENV_PRODUCTION}" > .env.production
