@@ -158,20 +158,37 @@ jobs:
     needs: build-and-test
     runs-on: [self-hosted, linux, docker]
     container:
-      image: docker:27.1.1-cli      # 直接用官方 docker CLI 镜像，省去安装 CLI 的步骤
-      options: --network core-net   # 👈 关键：与外部 dind 在同一网络
+      image: docker:27-dind      # 使用与 runner 相同版本的 Docker
+      options: --network core-net --privileged  # 添加 privileged 权限
     env:
-      DOCKER_HOST: tcp://docker-dind:2375   # 👈 指向你 compose 起的 dind
+      DOCKER_HOST: tcp://docker-dind:2375
+      DOCKER_TLS_CERTDIR: ""
     steps:
       - uses: actions/checkout@v4
 
-      - name: Docker version
-        run: docker version
-
-      - name: Sanity check dind connectivity
+      - name: Setup Docker environment
         run: |
-          wget -qO- http://docker-dind:2375/_ping || true
-          docker info || true
+          # 确保 Docker 环境正确设置
+          export DOCKER_HOST=tcp://docker-dind:2375
+          export DOCKER_TLS_CERTDIR=""
+          
+      - name: Wait for Docker daemon
+        run: |
+          for i in {1..30}; do
+            if docker version >/dev/null 2>&1; then
+              echo "Docker daemon is ready"
+              break
+            fi
+            echo "Waiting for Docker daemon... ($i/30)"
+            sleep 2
+          done
+          docker version
+          docker info
+
+      - name: Create cache directory
+        run: |
+          mkdir -p /tmp/.buildx-cache
+          chmod 755 /tmp/.buildx-cache
 
       - name: Cache Docker layers
         uses: actions/cache@v4
@@ -182,22 +199,29 @@ jobs:
             ${{ runner.os }}-buildx-
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        run: |
+          # 手动设置 buildx，避免 action 的复杂性
+          docker buildx create --use --driver docker-container --name mybuilder || true
+          docker buildx inspect --bootstrap
 
       - name: Build image
         run: |
           docker buildx build \
+            --builder mybuilder \
             --file Dockerfile \
             --tag backend-ci:latest \
             --cache-from type=local,src=/tmp/.buildx-cache \
-            --cache-to   type=local,dest=/tmp/.buildx-cache-new,mode=max \
+            --cache-to type=local,dest=/tmp/.buildx-cache-new,mode=max \
+            --load \
             .
 
       - name: Move cache
         if: always()
         run: |
-          rm -rf /tmp/.buildx-cache
-          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+          if [ -d "/tmp/.buildx-cache-new" ]; then
+            rm -rf /tmp/.buildx-cache
+            mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+          fi
 
   deploy:
     name: Deploy to NAS (self-hosted)
@@ -205,13 +229,35 @@ jobs:
     if: github.ref == 'refs/heads/main'
     runs-on: [self-hosted, linux, docker]
     container:
-      image: docker:27.1.1-cli
-      options: --network core-net
+      image: docker:27-dind
+      options: --network core-net --privileged
     env:
       DOCKER_HOST: tcp://docker-dind:2375
+      DOCKER_TLS_CERTDIR: ""
       ENV_PRODUCTION: ${{ secrets.GSOR_ENV_PRODUCTION }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Setup Docker environment
+        run: |
+          export DOCKER_HOST=tcp://docker-dind:2375
+          export DOCKER_TLS_CERTDIR=""
+
+      - name: Wait for Docker daemon
+        run: |
+          for i in {1..30}; do
+            if docker version >/dev/null 2>&1; then
+              echo "Docker daemon is ready"
+              break
+            fi
+            echo "Waiting for Docker daemon... ($i/30)"
+            sleep 2
+          done
+          docker version
+
+      - name: Install curl (for health check)
+        run: |
+          apk add --no-cache curl
 
       - name: Write .env.production
         run: printf '%s\n' "${ENV_PRODUCTION}" > .env.production
@@ -223,8 +269,11 @@ jobs:
 
       - name: Wait for health
         run: |
+          # 等待容器启动
+          sleep 10
+          
           for i in {1..30}; do
-            if curl -fsS http://127.0.0.1:3030/healthz >/dev/null; then
+            if curl -fsS http://127.0.0.1:3030/healthz >/dev/null 2>&1; then
               echo "Service is healthy"; exit 0
             fi
             echo "Waiting for service... ($i/30)"; sleep 2
