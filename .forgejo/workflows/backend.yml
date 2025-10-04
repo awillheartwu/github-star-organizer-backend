@@ -36,6 +36,7 @@ jobs:
     container:
       image: node:22-bookworm
       options: --network core-net
+      network: core-net      
     env:
       NODE_ENV: test
       DATABASE_URL: ${{ secrets.GSOR_DATABASE_URL }}
