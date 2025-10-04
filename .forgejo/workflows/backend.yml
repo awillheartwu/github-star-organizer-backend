@@ -160,7 +160,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Docker CLI
+      - name: Install Docker CLI and diagnose network
         run: |
           # 检查是否已安装 Docker CLI
           if ! command -v docker &> /dev/null; then
@@ -179,24 +179,58 @@ jobs:
           
           # 验证 Docker CLI 安装
           ~/bin/docker --version || docker --version
+          
+          echo "=== Network Diagnostics ==="
+          echo "Hostname:"
+          hostname || true
+          echo "IP addresses:"
+          ip addr show || ifconfig || true
+          echo "DNS resolution test:"
+          nslookup docker-dind || true
+          dig docker-dind || true
+          echo "Port 2375 availability test:"
+          netstat -tlnp | grep 2375 || ss -tlnp | grep 2375 || true
+          echo "Test direct connection to potential Docker hosts:"
+          for host in docker-dind localhost 127.0.0.1; do
+            echo "Testing $host:2375..."
+            timeout 3 bash -c "</dev/tcp/$host/2375" 2>/dev/null && echo "$host:2375 is reachable" || echo "$host:2375 is not reachable"
+          done
 
       - name: Build Docker image
         run: |
           # 确保 Docker CLI 在 PATH 中
           export PATH="$HOME/bin:$PATH"
-          # 设置 Docker 环境变量并构建镜像
-          export DOCKER_HOST=tcp://docker-dind:2375
-          export DOCKER_TLS_CERTDIR=""
           
-          # 等待 Docker daemon 可用
-          for i in {1..30}; do
-            if docker version >/dev/null 2>&1; then
-              echo "Docker daemon is ready"
+          # 尝试多种连接方式
+          DOCKER_HOSTS=(
+            "tcp://docker-dind:2375"
+            "tcp://localhost:2375" 
+            "tcp://127.0.0.1:2375"
+            "tcp://host.docker.internal:2375"
+          )
+          
+          DOCKER_READY=false
+          for DOCKER_HOST in "${DOCKER_HOSTS[@]}"; do
+            echo "Trying Docker host: $DOCKER_HOST"
+            export DOCKER_HOST
+            export DOCKER_TLS_CERTDIR=""
+            
+            # 测试连接
+            if timeout 5 docker version >/dev/null 2>&1; then
+              echo "Successfully connected to Docker daemon at $DOCKER_HOST"
+              DOCKER_READY=true
               break
             fi
-            echo "Waiting for Docker daemon... ($i/30)"
-            sleep 2
           done
+          
+          if [ "$DOCKER_READY" = false ]; then
+            echo "Could not connect to Docker daemon"
+            echo "Available network interfaces:"
+            ip addr show || ifconfig || true
+            echo "Checking if docker-dind container is running:"
+            netstat -tlnp | grep 2375 || true
+            exit 1
+          fi
           
           # 构建镜像
           docker build -f Dockerfile -t backend-ci:latest .
@@ -205,9 +239,24 @@ jobs:
         run: |
           # 确保 Docker CLI 在 PATH 中
           export PATH="$HOME/bin:$PATH"
-          # 验证镜像构建成功
-          export DOCKER_HOST=tcp://docker-dind:2375
-          export DOCKER_TLS_CERTDIR=""
+          # 使用之前步骤确定的 Docker 主机
+          # 重新检测可用的 Docker 主机
+          DOCKER_HOSTS=(
+            "tcp://docker-dind:2375"
+            "tcp://localhost:2375" 
+            "tcp://127.0.0.1:2375"
+            "tcp://host.docker.internal:2375"
+          )
+          
+          for DOCKER_HOST in "${DOCKER_HOSTS[@]}"; do
+            export DOCKER_HOST
+            export DOCKER_TLS_CERTDIR=""
+            if timeout 5 docker version >/dev/null 2>&1; then
+              echo "Using Docker host: $DOCKER_HOST"
+              break
+            fi
+          done
+          
           docker images backend-ci:latest
 
   deploy:
@@ -246,19 +295,33 @@ jobs:
         run: |
           # 确保 Docker CLI 在 PATH 中
           export PATH="$HOME/bin:$PATH"
-          # 设置环境变量
-          export DOCKER_HOST=tcp://docker-dind:2375
-          export DOCKER_TLS_CERTDIR=""
           
-          # 等待 Docker daemon 可用
-          for i in {1..30}; do
-            if docker version >/dev/null 2>&1; then
-              echo "Docker daemon is ready"
+          # 尝试多种连接方式
+          DOCKER_HOSTS=(
+            "tcp://docker-dind:2375"
+            "tcp://localhost:2375" 
+            "tcp://127.0.0.1:2375"
+            "tcp://host.docker.internal:2375"
+          )
+          
+          DOCKER_READY=false
+          for DOCKER_HOST in "${DOCKER_HOSTS[@]}"; do
+            echo "Trying Docker host: $DOCKER_HOST"
+            export DOCKER_HOST
+            export DOCKER_TLS_CERTDIR=""
+            
+            # 测试连接
+            if timeout 5 docker version >/dev/null 2>&1; then
+              echo "Successfully connected to Docker daemon at $DOCKER_HOST"
+              DOCKER_READY=true
               break
             fi
-            echo "Waiting for Docker daemon... ($i/30)"
-            sleep 2
           done
+          
+          if [ "$DOCKER_READY" = false ]; then
+            echo "Could not connect to Docker daemon"
+            exit 1
+          fi
           
           # 部署应用
           docker compose -f docker-compose.yml down --remove-orphans || true
