@@ -157,26 +157,22 @@ jobs:
     name: Build container image
     needs: build-and-test
     runs-on: [self-hosted, linux, docker]
-
-    # 关键：在“自带 docker CLI 的容器”里跑本 job
-    container: docker:27-cli # 或 docker:24-cli，均含 buildx 插件
+    container: node:22-slim
     env:
       DOCKER_HOST: tcp://docker-dind:2375
-
     steps:
       - uses: actions/checkout@v4
 
-      # 可选：确保有 buildx（docker:cli 通常已带，有需要再装）
-      - name: Ensure buildx available
+      # 安装 Docker CLI（静态二进制，最快）
+      - name: Install Docker CLI
         run: |
+          apt-get update && apt-get install -y curl ca-certificates
+          curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-27.1.1.tgz \
+            | tar -xz -C /usr/local/bin --strip=1 docker/docker
           docker version
-          docker buildx version || apk add --no-cache docker-cli-buildx && docker buildx version
 
-      - name: Create/Use builder
-        run: |
-          docker buildx inspect ci-builder >/dev/null 2>&1 || docker buildx create --name ci-builder --use
-          docker buildx use ci-builder
-          docker buildx inspect --bootstrap
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Cache Docker layers
         uses: actions/cache@v4
@@ -195,16 +191,11 @@ jobs:
             --cache-to type=local,dest=/tmp/.buildx-cache-new,mode=max \
             .
 
-      - name: Move cache (if exists)
+      - name: Move cache
         if: always()
         run: |
-          if [ -d /tmp/.buildx-cache-new ]; then
-            rm -rf /tmp/.buildx-cache
-            mv /tmp/.buildx-cache-new /tmp/.buildx-cache
-          else
-            echo "No new cache produced; skipping move."
-          fi
-
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
   deploy:
     name: Deploy to NAS (self-hosted)
     needs: [build-and-test, build-image]
