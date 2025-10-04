@@ -157,13 +157,26 @@ jobs:
     name: Build container image
     needs: build-and-test
     runs-on: [self-hosted, linux, docker]
+
+    # 关键：在“自带 docker CLI 的容器”里跑本 job
+    container: docker:27-cli # 或 docker:24-cli，均含 buildx 插件
     env:
-      DOCKER_HOST: tcp://docker-dind:2375 # 👈 使用 dind
+      DOCKER_HOST: tcp://docker-dind:2375
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      # 可选：确保有 buildx（docker:cli 通常已带，有需要再装）
+      - name: Ensure buildx available
+        run: |
+          docker version
+          docker buildx version || apk add --no-cache docker-cli-buildx && docker buildx version
+
+      - name: Create/Use builder
+        run: |
+          docker buildx inspect ci-builder >/dev/null 2>&1 || docker buildx create --name ci-builder --use
+          docker buildx use ci-builder
+          docker buildx inspect --bootstrap
 
       - name: Cache Docker layers
         uses: actions/cache@v4
@@ -182,11 +195,15 @@ jobs:
             --cache-to type=local,dest=/tmp/.buildx-cache-new,mode=max \
             .
 
-      - name: Move cache
+      - name: Move cache (if exists)
         if: always()
         run: |
-          rm -rf /tmp/.buildx-cache
-          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+          if [ -d /tmp/.buildx-cache-new ]; then
+            rm -rf /tmp/.buildx-cache
+            mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+          else
+            echo "No new cache produced; skipping move."
+          fi
 
   deploy:
     name: Deploy to NAS (self-hosted)
