@@ -154,114 +154,19 @@ jobs:
         run: pnpm build
 
   build-image:
-    name: Build container image
+    name: Build Docker image
     needs: build-and-test
     runs-on: [self-hosted, linux, docker]
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Docker CLI and diagnose network
+      - name: Build image
         run: |
-          # 检查是否已安装 Docker CLI
-          if ! command -v docker &> /dev/null; then
-            echo "Installing Docker CLI..."
-            # 创建本地 bin 目录
-            mkdir -p ~/bin
-            # 下载并安装 Docker CLI
-            curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-20.10.24.tgz | tar xz
-            cp docker/docker ~/bin/
-            rm -rf docker
-            chmod +x ~/bin/docker
-            # 添加到 PATH
-            echo "$HOME/bin" >> $GITHUB_PATH
-            export PATH="$HOME/bin:$PATH"
-          fi
-          
-          # 验证 Docker CLI 安装
-          ~/bin/docker --version || docker --version
-          
-          echo "=== Network Diagnostics ==="
-          echo "Hostname:"
-          hostname || true
-          echo "IP addresses:"
-          ip addr show || ifconfig || true
-          echo "DNS resolution test:"
-          nslookup docker-dind || true
-          dig docker-dind || true
-          echo "Port 2375 availability test:"
-          netstat -tlnp | grep 2375 || ss -tlnp | grep 2375 || true
-          echo "Test direct connection to potential Docker hosts:"
-          for host in docker-dind localhost 127.0.0.1; do
-            echo "Testing $host:2375..."
-            timeout 3 bash -c "</dev/tcp/$host/2375" 2>/dev/null && echo "$host:2375 is reachable" || echo "$host:2375 is not reachable"
-          done
-
-      - name: Build Docker image
-        run: |
-          # 确保 Docker CLI 在 PATH 中
-          export PATH="$HOME/bin:$PATH"
-          
-          # 尝试多种连接方式
-          DOCKER_HOSTS=(
-            "tcp://docker-dind:2375"
-            "tcp://localhost:2375" 
-            "tcp://127.0.0.1:2375"
-            "tcp://host.docker.internal:2375"
-          )
-          
-          DOCKER_READY=false
-          for DOCKER_HOST in "${DOCKER_HOSTS[@]}"; do
-            echo "Trying Docker host: $DOCKER_HOST"
-            export DOCKER_HOST
-            export DOCKER_TLS_CERTDIR=""
-            
-            # 测试连接
-            if timeout 5 docker version >/dev/null 2>&1; then
-              echo "Successfully connected to Docker daemon at $DOCKER_HOST"
-              DOCKER_READY=true
-              break
-            fi
-          done
-          
-          if [ "$DOCKER_READY" = false ]; then
-            echo "Could not connect to Docker daemon"
-            echo "Available network interfaces:"
-            ip addr show || ifconfig || true
-            echo "Checking if docker-dind container is running:"
-            netstat -tlnp | grep 2375 || true
-            exit 1
-          fi
-          
-          # 构建镜像
-          docker build -f Dockerfile -t backend-ci:latest .
-
-      - name: Test image
-        run: |
-          # 确保 Docker CLI 在 PATH 中
-          export PATH="$HOME/bin:$PATH"
-          # 使用之前步骤确定的 Docker 主机
-          # 重新检测可用的 Docker 主机
-          DOCKER_HOSTS=(
-            "tcp://docker-dind:2375"
-            "tcp://localhost:2375" 
-            "tcp://127.0.0.1:2375"
-            "tcp://host.docker.internal:2375"
-          )
-          
-          for DOCKER_HOST in "${DOCKER_HOSTS[@]}"; do
-            export DOCKER_HOST
-            export DOCKER_TLS_CERTDIR=""
-            if timeout 5 docker version >/dev/null 2>&1; then
-              echo "Using Docker host: $DOCKER_HOST"
-              break
-            fi
-          done
-          
-          docker images backend-ci:latest
+          docker build -t backend-ci:latest .
 
   deploy:
-    name: Deploy to NAS (self-hosted)
-    needs: [build-and-test, build-image]
+    name: Deploy
+    needs: build-image
     if: github.ref == 'refs/heads/main'
     runs-on: [self-hosted, linux, docker]
     env:
@@ -269,80 +174,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Docker CLI (if needed)
-        run: |
-          # 检查是否已安装 Docker CLI
-          if ! command -v docker &> /dev/null; then
-            echo "Installing Docker CLI..."
-            # 创建本地 bin 目录
-            mkdir -p ~/bin
-            # 下载并安装 Docker CLI
-            curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-20.10.24.tgz | tar xz
-            cp docker/docker ~/bin/
-            rm -rf docker
-            chmod +x ~/bin/docker
-            # 添加到 PATH
-            echo "$HOME/bin" >> $GITHUB_PATH
-            export PATH="$HOME/bin:$PATH"
-          fi
-          
-          ~/bin/docker --version || docker --version
-
       - name: Write .env.production
         run: printf '%s\n' "${ENV_PRODUCTION}" > .env.production
 
-      - name: Deploy with Docker Compose
+      - name: Deploy
         run: |
-          # 确保 Docker CLI 在 PATH 中
-          export PATH="$HOME/bin:$PATH"
-          
-          # 尝试多种连接方式
-          DOCKER_HOSTS=(
-            "tcp://docker-dind:2375"
-            "tcp://localhost:2375" 
-            "tcp://127.0.0.1:2375"
-            "tcp://host.docker.internal:2375"
-          )
-          
-          DOCKER_READY=false
-          for DOCKER_HOST in "${DOCKER_HOSTS[@]}"; do
-            echo "Trying Docker host: $DOCKER_HOST"
-            export DOCKER_HOST
-            export DOCKER_TLS_CERTDIR=""
-            
-            # 测试连接
-            if timeout 5 docker version >/dev/null 2>&1; then
-              echo "Successfully connected to Docker daemon at $DOCKER_HOST"
-              DOCKER_READY=true
-              break
-            fi
-          done
-          
-          if [ "$DOCKER_READY" = false ]; then
-            echo "Could not connect to Docker daemon"
-            exit 1
-          fi
-          
-          # 部署应用
-          docker compose -f docker-compose.yml down --remove-orphans || true
-          docker compose -f docker-compose.yml up -d --build
+          docker compose down || true
+          docker compose up -d --build
 
-      - name: Wait for health
+      - name: Health check
         run: |
-          # 等待容器启动
-          sleep 15
-          
+          sleep 10
           for i in {1..30}; do
-            if curl -fsS http://127.0.0.1:3030/healthz >/dev/null 2>&1; then
-              echo "Service is healthy"; exit 0
+            if curl -f http://localhost:3030/healthz >/dev/null 2>&1; then
+              echo "✓ Service is healthy"
+              exit 0
             fi
-            echo "Waiting for service... ($i/30)"; sleep 2
+            echo "Waiting... ($i/30)"
+            sleep 2
           done
-          echo "Service failed to become healthy" >&2
-          
-          # 显示日志
-          export PATH="$HOME/bin:$PATH"
-          export DOCKER_HOST=tcp://docker-dind:2375
-          export DOCKER_TLS_CERTDIR=""
-          docker compose logs --no-color || true
+          echo "✗ Health check failed"
+          docker compose logs
           exit 1

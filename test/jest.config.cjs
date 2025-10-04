@@ -1,4 +1,4 @@
-const path = require('node:path')
+import path from 'path'
 
 // Detect whether the current invocation is a filtered/partial test run.
 function isFilteredRun() {
