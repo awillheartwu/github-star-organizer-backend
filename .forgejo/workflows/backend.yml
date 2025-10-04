@@ -33,7 +33,9 @@ on:
 jobs:
   build-and-test:
     runs-on: [self-hosted, linux, docker]
-    container: node:22-slim
+    container:
+      image: node:22-bookworm
+      options: --network core-net
     env:
       NODE_ENV: test
       DATABASE_URL: ${{ secrets.GSOR_DATABASE_URL }}
@@ -45,6 +47,9 @@ jobs:
       AI_API_KEY: ${{ secrets.GSOR_AI_API_KEY }}
       JWT_ACCESS_SECRET: ${{ secrets.GSOR_JWT_ACCESS_SECRET }}
       JWT_REFRESH_SECRET: ${{ secrets.GSOR_JWT_REFRESH_SECRET }}
+      DOCKER_HOST: tcp://docker-dind:2375
+      DOCKER_BUILDKIT: "1"
+      ENV_PRODUCTION: ${{ secrets.GSOR_ENV_PRODUCTION }}
 
       # 非敏感变量，直接内联
       PORT: 3999
@@ -153,76 +158,53 @@ jobs:
       - name: Compile TypeScript
         run: pnpm build
 
-  build-image:
-    name: Build Docker image
-    needs: build-and-test
-    runs-on: [self-hosted, linux, docker]
-    container:
-      image: docker:27-cli
-    env:
-      DOCKER_HOST: tcp://docker-dind:2375
-    steps:
-      - name: Checkout code
+      - name: Install Docker CLI
         run: |
-          git clone --depth 1 --branch ${GITHUB_REF##*/} https://github.com/${GITHUB_REPOSITORY}.git .
-          git checkout ${GITHUB_SHA}
+          apt-get update -y
+          apt-get install -y --no-install-recommends ca-certificates curl gnupg
+          install -m 0755 -d /etc/apt/keyrings
+          curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+          echo \
+            "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
+            https://download.docker.com/linux/debian $(. /etc/os-release && echo $VERSION_CODENAME) stable" \
+            > /etc/apt/sources.list.d/docker.list
+          apt-get update && apt-get install -y docker-ce-cli docker-compose-plugin
 
-      - name: Build image
+      - name: Sanity check dind connectivity
         run: |
-          # 等待 Docker daemon
           for i in {1..30}; do
             if docker info >/dev/null 2>&1; then
+              echo "Docker daemon on docker-dind is reachable"
               break
             fi
+            echo "Waiting for docker-dind... ($i/30)"
             sleep 1
           done
-          docker build -t backend-ci:latest .
-
-  deploy:
-    name: Deploy
-    needs: build-image
-    if: github.ref == 'refs/heads/main'
-    runs-on: [self-hosted, linux, docker]
-    container:
-      image: docker:27-cli
-    env:
-      DOCKER_HOST: tcp://docker-dind:2375
-      ENV_PRODUCTION: ${{ secrets.GSOR_ENV_PRODUCTION }}
-    steps:
-      - name: Install tools
-        run: apk add --no-cache curl git
-
-      - name: Checkout code
-        run: |
-          git clone --depth 1 --branch ${GITHUB_REF##*/} https://github.com/${GITHUB_REPOSITORY}.git .
-          git checkout ${GITHUB_SHA}
+          wget -qO- http://docker-dind:2375/_ping || true
+          docker version || true
+          docker info || true
 
       - name: Write .env.production
         run: printf '%s\n' "${ENV_PRODUCTION}" > .env.production
 
-      - name: Deploy
+      - name: Build Docker image
+        run: docker build -t backend-ci:latest .
+
+      - name: Docker Compose up (rebuild)
         run: |
-          # 等待 Docker daemon
-          for i in {1..30}; do
-            if docker info >/dev/null 2>&1; then
-              break
-            fi
-            sleep 1
-          done
-          docker compose down || true
+          docker compose down --remove-orphans || true
           docker compose up -d --build
 
       - name: Health check
         run: |
-          sleep 10
           for i in {1..30}; do
-            if curl -f http://localhost:3030/healthz >/dev/null 2>&1; then
-              echo "✓ Service is healthy"
+            if curl -fsS http://127.0.0.1:3030/healthz >/dev/null; then
+              echo "Service is healthy"
               exit 0
             fi
-            echo "Waiting... ($i/30)"
+            echo "Waiting for service... ($i/30)"
             sleep 2
           done
-          echo "✗ Health check failed"
-          docker compose logs
+          echo "Service failed to become healthy" >&2
+          docker compose logs --no-color || true
           exit 1
