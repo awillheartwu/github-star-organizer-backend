@@ -36,7 +36,6 @@ jobs:
     container:
       image: node:22-bookworm
       options: --network core-net
-    network: core-net      
     env:
       NODE_ENV: test
       DATABASE_URL: ${{ secrets.GSOR_DATABASE_URL }}
@@ -49,7 +48,7 @@ jobs:
       JWT_ACCESS_SECRET: ${{ secrets.GSOR_JWT_ACCESS_SECRET }}
       JWT_REFRESH_SECRET: ${{ secrets.GSOR_JWT_REFRESH_SECRET }}
       DOCKER_HOST: tcp://docker-dind:2375
-      DOCKER_BUILDKIT: "1"
+      DOCKER_BUILDKIT: '1'
       ENV_PRODUCTION: ${{ secrets.GSOR_ENV_PRODUCTION }}
 
       # 非敏感变量，直接内联

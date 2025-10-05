@@ -165,6 +165,7 @@ export async function getProjectsService(ctx: Ctx, query: ProjectQuery) {
     }),
     ctx.prisma.project.count({ where: conditions }),
   ])
+  ctx.log.debug({ total, count: data.length }, 'project.list fetched')
 
   // 脱壳
   const flatData = toProjectDtos(data as unknown as ProjectWithRelations[])
