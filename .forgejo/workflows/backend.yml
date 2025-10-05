@@ -35,9 +35,10 @@ jobs:
     runs-on: [self-hosted, linux, docker]
     container:
       image: node:22-bookworm
-      # 直接复用 Runner 的 Docker 套接字，不再尝试连接 dind
-      docker_host: 'tcp://127.0.0.1:2375'
-      options: '--add-host=dind_container.docker.internal:host-gateway'
+      # 不需要 docker_host 字段了
+      options: >-
+        --add-host=host.docker.internal:host-gateway
+        -v /var/run/docker.sock:/var/run/docker.sock
     env:
       NODE_ENV: test
       DATABASE_URL: ${{ secrets.GSOR_DATABASE_URL }}
@@ -50,7 +51,7 @@ jobs:
       JWT_ACCESS_SECRET: ${{ secrets.GSOR_JWT_ACCESS_SECRET }}
       JWT_REFRESH_SECRET: ${{ secrets.GSOR_JWT_REFRESH_SECRET }}
       # 显式告诉 docker CLI 走本地 UNIX 套接字
-      DOCKER_HOST: tcp://dind_container.docker.internal:2375
+      DOCKER_HOST: unix:///var/run/docker.sock
       DOCKER_BUILDKIT: '1'
       ENV_PRODUCTION: ${{ secrets.GSOR_ENV_PRODUCTION }}
 
@@ -164,41 +165,28 @@ jobs:
       - name: Install Docker CLI
         run: |
           apt-get update -y
-          apt-get install -y --no-install-recommends ca-certificates curl gnupg
-          install -m 0755 -d /etc/apt/keyrings
-          curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-          echo \
-            "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
-            https://download.docker.com/linux/debian $(. /etc/os-release && echo $VERSION_CODENAME) stable" \
-            > /etc/apt/sources.list.d/docker.list
-          apt-get update && apt-get install -y docker-ce-cli docker-compose-plugin
+          apt-get install -y docker-ce-cli docker-compose-plugin
 
-      - name: Verify Docker socket & CLI
-        run: |
-          docker version
-          docker info | sed -n '1,20p'
-
-      - name: Write .env.production
-        run: printf '%s\n' "${ENV_PRODUCTION}" > .env.production
+      - name: Verify Docker
+        run: docker info
 
       - name: Build Docker image
         run: docker build -t backend-ci:latest .
 
-      - name: Docker Compose up (rebuild)
+      - name: Docker Compose up
         run: |
           docker compose down --remove-orphans || true
           docker compose up -d --build
 
       - name: Health check
         run: |
-          for i in {1..30}; do
+          for i in {1..20}; do
             if curl -fsS http://127.0.0.1:3030/healthz >/dev/null; then
-              echo "Service is healthy"
+              echo "Healthy ✅"
               exit 0
             fi
-            echo "Waiting for service... ($i/30)"
             sleep 2
           done
-          echo "Service failed to become healthy" >&2
-          docker compose logs --no-color || true
+          echo "Service not ready ❌"
+          docker compose logs
           exit 1
