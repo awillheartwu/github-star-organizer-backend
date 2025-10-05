@@ -36,7 +36,7 @@ jobs:
     container:
       image: node:22-bookworm
       options: >-
-        --add-host docker-dind:host-gateway
+        --add-host host.docker.internal:host-gateway
     env:
       NODE_ENV: test
       DATABASE_URL: ${{ secrets.GSOR_DATABASE_URL }}
@@ -48,7 +48,7 @@ jobs:
       AI_API_KEY: ${{ secrets.GSOR_AI_API_KEY }}
       JWT_ACCESS_SECRET: ${{ secrets.GSOR_JWT_ACCESS_SECRET }}
       JWT_REFRESH_SECRET: ${{ secrets.GSOR_JWT_REFRESH_SECRET }}
-      DOCKER_HOST: tcp://docker-dind:2375
+      DOCKER_HOST: tcp://host.docker.internal:2375
       DOCKER_BUILDKIT: '1'
       ENV_PRODUCTION: ${{ secrets.GSOR_ENV_PRODUCTION }}
 
@@ -174,11 +174,10 @@ jobs:
       - name: Check dind DNS & health
         run: |
           echo "DNS resolving..."
-          getent hosts docker-dind || getent hosts docker || (echo "docker-dind not resolvable"; exit 1)
+          getent hosts host.docker.internal || (echo "host.docker.internal not resolvable"; exit 1)
 
-          echo "Hitting /_ping..."
           for i in {1..30}; do
-            if curl -fsS http://docker-dind:2375/_ping >/dev/null; then
+            if curl -fsS http://host.docker.internal:2375/_ping >/dev/null; then
               echo "dind is up"
               break
             fi
@@ -186,8 +185,7 @@ jobs:
             sleep 1
           done
 
-          echo "Docker version from dind:"
-          DOCKER_HOST=tcp://docker-dind:2375 docker version
+          DOCKER_HOST=tcp://host.docker.internal:2375 docker version
 
       - name: Sanity check dind connectivity
         run: |
