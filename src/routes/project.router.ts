@@ -5,6 +5,7 @@ import {
   CreateProjectBodySchema,
   BaseProjectResponseSchema,
   UpdateProjectBodySchema,
+  ProjectLanguageListResponseSchema,
 } from '../schemas/project.schema'
 import { Type } from '@sinclair/typebox'
 import { projectController } from '../controllers'
@@ -24,6 +25,20 @@ export default async function projectRoutes(fastify: FastifyInstance) {
       },
     },
     projectController.getProjects
+  )
+  fastify.get(
+    '/projects/languages',
+    {
+      onRequest: [fastify.verifyAccess],
+      schema: {
+        description: '获取项目语言列表',
+        tags: ['Project'],
+        response: { 200: ProjectLanguageListResponseSchema },
+        summary: 'Get project languages',
+        security: [{ bearerAuth: [] }],
+      },
+    },
+    projectController.getProjectLanguages
   )
   fastify.get(
     '/projects/:id',

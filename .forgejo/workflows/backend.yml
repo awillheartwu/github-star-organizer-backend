@@ -35,7 +35,11 @@ jobs:
     runs-on: [self-hosted, linux, docker]
     container:
       image: node:22-bookworm
-      docker_host: 'automount'
+      # 直接复用 Runner 的 Docker 套接字，不再尝试连接 dind
+      docker_host: "unix:///var/run/docker.sock"
+      # 保险起见显式挂载一次（Forgejo Runner 会自动挂载，但不同版本行为略有差异）
+      options: >-
+        -v /var/run/docker.sock:/var/run/docker.sock
     env:
       NODE_ENV: test
       DATABASE_URL: ${{ secrets.GSOR_DATABASE_URL }}
@@ -157,6 +161,11 @@ jobs:
 
       - name: Compile TypeScript
         run: pnpm build
+
+      - name: Verify Docker socket & CLI
+        run: |
+          docker version
+          docker info | sed -n '1,20p'
 
       - name: Install Docker CLI
         run: |

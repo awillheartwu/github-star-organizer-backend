@@ -177,6 +177,30 @@ export async function getProjectsService(ctx: Ctx, query: ProjectQuery) {
 }
 
 /**
+ * 获取所有未归档项目使用的语言列表（去重 + 排序）。
+ *
+ * @param ctx 请求上下文
+ * @returns 排序后的语言名数组
+ * @category Project
+ */
+export async function getProjectLanguagesService(ctx: Ctx) {
+  const rows = await ctx.prisma.project.findMany({
+    where: { archived: false, language: { not: null } },
+    select: { language: true },
+  })
+
+  const languages = uniq(
+    rows
+      .map(({ language }) => language?.trim())
+      .filter((value): value is string => Boolean(value && value.length))
+  ).sort((a, b) => a.localeCompare(b))
+
+  ctx.log.debug({ count: languages.length }, 'project.languages fetched')
+
+  return languages
+}
+
+/**
  * 按 ID 获取单个项目（含标签与视频链接）。
  *
  * @param ctx 上下文

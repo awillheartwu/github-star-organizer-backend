@@ -94,6 +94,11 @@ export const ProjectListResponseSchema = Type.Object({
   total: Type.Number(),
 })
 
+export const ProjectLanguageListResponseSchema = Type.Object({
+  message: Type.String(),
+  data: Type.Array(Type.String()),
+})
+
 export const Tag = Type.Object({
   id: Type.Optional(Type.String()),
   name: Type.String(),

@@ -220,6 +220,102 @@ describe('Project Controller Integration Tests', () => {
     })
   })
 
+  describe('GET /projects/languages', () => {
+    let archivedProjectId: string
+
+    beforeEach(async () => {
+      const responses = await Promise.all([
+        app.inject({
+          method: 'POST',
+          url: '/projects',
+          headers: {
+            authorization: `Bearer ${authToken}`,
+          },
+          payload: {
+            githubId: 4001,
+            name: 'ts-project',
+            fullName: 'user/ts-project',
+            url: 'https://github.com/user/ts-project',
+            language: 'TypeScript',
+          },
+        }),
+        app.inject({
+          method: 'POST',
+          url: '/projects',
+          headers: {
+            authorization: `Bearer ${authToken}`,
+          },
+          payload: {
+            githubId: 4002,
+            name: 'js-project',
+            fullName: 'user/js-project',
+            url: 'https://github.com/user/js-project',
+            language: ' JavaScript ',
+          },
+        }),
+        app.inject({
+          method: 'POST',
+          url: '/projects',
+          headers: {
+            authorization: `Bearer ${authToken}`,
+          },
+          payload: {
+            githubId: 4003,
+            name: 'no-lang-project',
+            fullName: 'user/no-lang-project',
+            url: 'https://github.com/user/no-lang-project',
+          },
+        }),
+      ])
+
+      const archivedResult = JSON.parse(responses[1].payload)
+      archivedProjectId = archivedResult.data.id
+    })
+
+    it('should return deduplicated, trimmed and sorted languages', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/projects/languages',
+        headers: {
+          authorization: `Bearer ${authToken}`,
+        },
+      })
+
+      expect(response.statusCode).toBe(200)
+      const result = JSON.parse(response.payload)
+      expect(result.message).toBe('get project languages')
+      expect(result.data).toEqual(['JavaScript', 'TypeScript'])
+    })
+
+    it('should exclude languages of archived projects', async () => {
+      await app.inject({
+        method: 'PUT',
+        url: `/projects/${archivedProjectId}`,
+        headers: {
+          authorization: `Bearer ${authToken}`,
+        },
+        payload: { archived: true },
+      })
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/projects/languages',
+        headers: {
+          authorization: `Bearer ${authToken}`,
+        },
+      })
+
+      expect(response.statusCode).toBe(200)
+      const result = JSON.parse(response.payload)
+      expect(result.data).toEqual(['TypeScript'])
+    })
+
+    it('should require authentication', async () => {
+      const response = await app.inject({ method: 'GET', url: '/projects/languages' })
+      expect(response.statusCode).toBe(401)
+    })
+  })
+
   describe('GET /projects/:id', () => {
     let projectId: string
 

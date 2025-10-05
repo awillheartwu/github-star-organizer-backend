@@ -48,6 +48,12 @@ export async function getProjects(
   })
 }
 
+export async function getProjectLanguages(req: FastifyRequest, reply: FastifyReply) {
+  const ctx = getCtx(req)
+  const languages = await projectService.getProjectLanguagesService(ctx)
+  reply.send({ message: 'get project languages', data: languages })
+}
+
 export async function getProjectById(
   req: FastifyRequest<{ Params: { id: string } }>,
   reply: FastifyReply
