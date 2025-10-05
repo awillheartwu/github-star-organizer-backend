@@ -35,8 +35,7 @@ jobs:
     runs-on: [self-hosted, linux, docker]
     container:
       image: node:22-bookworm
-      options: >-
-        --add-host host.docker.internal:host-gateway
+      docker_host: 'automount'
     env:
       NODE_ENV: test
       DATABASE_URL: ${{ secrets.GSOR_DATABASE_URL }}
@@ -48,7 +47,7 @@ jobs:
       AI_API_KEY: ${{ secrets.GSOR_AI_API_KEY }}
       JWT_ACCESS_SECRET: ${{ secrets.GSOR_JWT_ACCESS_SECRET }}
       JWT_REFRESH_SECRET: ${{ secrets.GSOR_JWT_REFRESH_SECRET }}
-      DOCKER_HOST: tcp://host.docker.internal:2375
+      # DOCKER_HOST: tcp://host.docker.internal:2375
       DOCKER_BUILDKIT: '1'
       ENV_PRODUCTION: ${{ secrets.GSOR_ENV_PRODUCTION }}
 
@@ -170,44 +169,6 @@ jobs:
             https://download.docker.com/linux/debian $(. /etc/os-release && echo $VERSION_CODENAME) stable" \
             > /etc/apt/sources.list.d/docker.list
           apt-get update && apt-get install -y docker-ce-cli docker-compose-plugin
-
-      - name: Ensure host.docker.internal is resolvable
-        run: |
-          if ! getent hosts host.docker.internal >/dev/null 2>&1; then
-            GW_IP=$(ip route | awk '/default/ {print $3}')
-            echo "$GW_IP host.docker.internal" >> /etc/hosts
-            echo "mapped host.docker.internal -> $GW_IP"
-          fi
-
-      - name: Check dind DNS & health
-        run: |
-          echo "DNS resolving..."
-          getent hosts host.docker.internal || (echo "host.docker.internal not resolvable"; exit 1)
-
-          for i in {1..30}; do
-            if curl -fsS http://host.docker.internal:2375/_ping >/dev/null; then
-              echo "dind is up"
-              break
-            fi
-            echo "waiting dind... ($i/30)"
-            sleep 1
-          done
-
-          DOCKER_HOST=tcp://host.docker.internal:2375 docker version
-
-      - name: Sanity check dind connectivity
-        run: |
-          for i in {1..30}; do
-            if docker info >/dev/null 2>&1; then
-              echo "Docker daemon on docker-dind is reachable"
-              break
-            fi
-            echo "Waiting for docker-dind... ($i/30)"
-            sleep 1
-          done
-          wget -qO- http://docker-dind:2375/_ping || true
-          docker version || true
-          docker info || true
 
       - name: Write .env.production
         run: printf '%s\n' "${ENV_PRODUCTION}" > .env.production
