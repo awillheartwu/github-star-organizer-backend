@@ -161,11 +161,6 @@ jobs:
       - name: Compile TypeScript
         run: pnpm build
 
-      - name: Verify Docker socket & CLI
-        run: |
-          docker version
-          docker info | sed -n '1,20p'
-
       - name: Install Docker CLI
         run: |
           apt-get update -y
@@ -177,6 +172,11 @@ jobs:
             https://download.docker.com/linux/debian $(. /etc/os-release && echo $VERSION_CODENAME) stable" \
             > /etc/apt/sources.list.d/docker.list
           apt-get update && apt-get install -y docker-ce-cli docker-compose-plugin
+
+      - name: Verify Docker socket & CLI
+        run: |
+          docker version
+          docker info | sed -n '1,20p'
 
       - name: Write .env.production
         run: printf '%s\n' "${ENV_PRODUCTION}" > .env.production
