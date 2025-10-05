@@ -171,6 +171,14 @@ jobs:
             > /etc/apt/sources.list.d/docker.list
           apt-get update && apt-get install -y docker-ce-cli docker-compose-plugin
 
+      - name: Ensure host.docker.internal is resolvable
+        run: |
+          if ! getent hosts host.docker.internal >/dev/null 2>&1; then
+            GW_IP=$(ip route | awk '/default/ {print $3}')
+            echo "$GW_IP host.docker.internal" >> /etc/hosts
+            echo "mapped host.docker.internal -> $GW_IP"
+          fi
+
       - name: Check dind DNS & health
         run: |
           echo "DNS resolving..."
