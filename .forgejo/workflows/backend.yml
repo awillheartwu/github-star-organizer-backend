@@ -170,6 +170,24 @@ jobs:
             > /etc/apt/sources.list.d/docker.list
           apt-get update && apt-get install -y docker-ce-cli docker-compose-plugin
 
+      - name: Check dind DNS & health
+        run: |
+          echo "DNS resolving..."
+          getent hosts docker-dind || getent hosts docker || (echo "docker-dind not resolvable"; exit 1)
+
+          echo "Hitting /_ping..."
+          for i in {1..30}; do
+            if curl -fsS http://docker-dind:2375/_ping >/dev/null; then
+              echo "dind is up"
+              break
+            fi
+            echo "waiting dind... ($i/30)"
+            sleep 1
+          done
+
+          echo "Docker version from dind:"
+          DOCKER_HOST=tcp://docker-dind:2375 docker version
+
       - name: Sanity check dind connectivity
         run: |
           for i in {1..30}; do
