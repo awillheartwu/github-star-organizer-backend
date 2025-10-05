@@ -36,8 +36,8 @@ jobs:
     container:
       image: node:22-bookworm
       # 直接复用 Runner 的 Docker 套接字，不再尝试连接 dind
-      options: >-
-        -v /var/run/docker.sock:/var/run/docker.sock
+      docker_host: 'tcp://127.0.0.1:2375'
+      options: '--add-host=dind_container.docker.internal:host-gateway'
     env:
       NODE_ENV: test
       DATABASE_URL: ${{ secrets.GSOR_DATABASE_URL }}
@@ -50,7 +50,7 @@ jobs:
       JWT_ACCESS_SECRET: ${{ secrets.GSOR_JWT_ACCESS_SECRET }}
       JWT_REFRESH_SECRET: ${{ secrets.GSOR_JWT_REFRESH_SECRET }}
       # 显式告诉 docker CLI 走本地 UNIX 套接字
-      DOCKER_HOST: unix:///var/run/docker.sock
+      DOCKER_HOST: tcp://dind_container.docker.internal:2375
       DOCKER_BUILDKIT: '1'
       ENV_PRODUCTION: ${{ secrets.GSOR_ENV_PRODUCTION }}
 
