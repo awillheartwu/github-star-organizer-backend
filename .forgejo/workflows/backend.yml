@@ -36,8 +36,6 @@ jobs:
     container:
       image: node:22-bookworm
       # 直接复用 Runner 的 Docker 套接字，不再尝试连接 dind
-      docker_host: "unix:///var/run/docker.sock"
-      # 保险起见显式挂载一次（Forgejo Runner 会自动挂载，但不同版本行为略有差异）
       options: >-
         -v /var/run/docker.sock:/var/run/docker.sock
     env:
@@ -51,7 +49,8 @@ jobs:
       AI_API_KEY: ${{ secrets.GSOR_AI_API_KEY }}
       JWT_ACCESS_SECRET: ${{ secrets.GSOR_JWT_ACCESS_SECRET }}
       JWT_REFRESH_SECRET: ${{ secrets.GSOR_JWT_REFRESH_SECRET }}
-      # DOCKER_HOST: tcp://host.docker.internal:2375
+      # 显式告诉 docker CLI 走本地 UNIX 套接字
+      DOCKER_HOST: unix:///var/run/docker.sock
       DOCKER_BUILDKIT: '1'
       ENV_PRODUCTION: ${{ secrets.GSOR_ENV_PRODUCTION }}
 
