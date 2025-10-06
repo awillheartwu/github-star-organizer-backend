@@ -16,15 +16,14 @@ RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store/v3 \
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN pnpm prisma generate
+RUN pnpm exec prisma generate
 RUN pnpm build
 
 FROM base AS prod-deps
 COPY package.json pnpm-lock.yaml ./
 COPY prisma ./prisma
 COPY --from=deps /app/node_modules ./node_modules
-RUN pnpm prisma generate \
-  && pnpm prune --prod
+RUN pnpm exec prisma generate && pnpm prune --prod
 
 FROM node:22-slim AS runner
 WORKDIR /app
