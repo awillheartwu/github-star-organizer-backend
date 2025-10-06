@@ -132,7 +132,48 @@ export async function logout(req: FastifyRequest, reply: FastifyReply) {
 
 /** 当前用户（从 access token 解出） */
 export async function me(req: FastifyRequest, reply: FastifyReply) {
-  return reply.send({ message: 'ok', data: { user: req.user! } })
+  const ctx = getCtx(req)
+  const userId = req.user?.sub
+  if (!userId) {
+    throw new AppError(
+      'Unauthorized',
+      HTTP_STATUS.UNAUTHORIZED.statusCode,
+      ERROR_TYPES.UNAUTHORIZED
+    )
+  }
+
+  const profile = await ctx.prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      email: true,
+      displayName: true,
+      role: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  })
+
+  if (!profile) {
+    throw new AppError('User not found', HTTP_STATUS.NOT_FOUND.statusCode, ERROR_TYPES.NOT_FOUND, {
+      id: userId,
+    })
+  }
+
+  return reply.send({
+    message: 'ok',
+    data: {
+      user: {
+        sub: profile.id,
+        role: profile.role,
+        type: req.user?.type,
+        name: profile.displayName ?? profile.email,
+        email: profile.email,
+        createdAt: profile.createdAt.toISOString(),
+        updatedAt: profile.updatedAt.toISOString(),
+      },
+    },
+  })
 }
 
 /** 修改密码：验证旧密码 → 更新哈希 → 撤销所有 refresh（强下线） */

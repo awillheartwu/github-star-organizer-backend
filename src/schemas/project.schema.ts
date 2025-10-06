@@ -26,6 +26,8 @@ export const ProjectQuerySchema = Type.Object(
     createdAtEnd: Type.Optional(Type.String({ format: 'date-time' })),
     updatedAtStart: Type.Optional(Type.String({ format: 'date-time' })),
     updatedAtEnd: Type.Optional(Type.String({ format: 'date-time' })),
+    lastCommitStart: Type.Optional(Type.String({ format: 'date-time' })),
+    lastCommitEnd: Type.Optional(Type.String({ format: 'date-time' })),
 
     orderBy: Type.Optional(
       Type.Union([

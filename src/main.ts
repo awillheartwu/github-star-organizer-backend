@@ -47,6 +47,7 @@ async function bootstrap() {
   await app.register(cors, {
     origin: config.corsOrigin,
     credentials: config.corsCredentials,
+    methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   })
   await app.register(helmet, {
     contentSecurityPolicy: config.helmetCsp

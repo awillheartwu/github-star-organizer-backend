@@ -75,6 +75,8 @@ export async function getProjectsService(ctx: Ctx, query: ProjectQuery) {
     createdAtEnd,
     updatedAtStart,
     updatedAtEnd,
+    lastCommitStart,
+    lastCommitEnd,
     orderBy,
     orderDirection,
     offset,
@@ -128,6 +130,11 @@ export async function getProjectsService(ctx: Ctx, query: ProjectQuery) {
     conditions['updatedAt'] = {}
     if (updatedAtStart) conditions['updatedAt']['gte'] = new Date(updatedAtStart)
     if (updatedAtEnd) conditions['updatedAt']['lte'] = new Date(updatedAtEnd)
+  }
+  if (lastCommitStart || lastCommitEnd) {
+    conditions['lastCommit'] = {}
+    if (lastCommitStart) conditions['lastCommit']['gte'] = new Date(lastCommitStart)
+    if (lastCommitEnd) conditions['lastCommit']['lte'] = new Date(lastCommitEnd)
   }
 
   // 按标签筛选（多对多）

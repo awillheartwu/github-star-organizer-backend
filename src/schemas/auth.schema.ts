@@ -35,6 +35,10 @@ export const MeResponseSchema = Type.Object({
       sub: Type.String(),
       role: Type.Optional(Type.Union([Type.Literal('USER'), Type.Literal('ADMIN')])),
       type: Type.Optional(Type.String()),
+      name: Type.Optional(Type.String()),
+      email: Type.Optional(Type.String({ format: 'email' })),
+      createdAt: Type.Optional(Type.String({ format: 'date-time' })),
+      updatedAt: Type.Optional(Type.String({ format: 'date-time' })),
     }),
   }),
 })

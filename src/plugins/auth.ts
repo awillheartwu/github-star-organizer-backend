@@ -48,6 +48,8 @@ const authPlugin: FastifyPluginAsync = async (app) => {
    * 注意：实际写入 Cookie 时我们会在 setRefreshCookie 里显式传 Options，
    * 以确保与 env 完全一致。
    */
+  const cookieDomain = app.config.authCookieDomain?.trim() || undefined
+
   await app.register(cookie, {
     // 这里不必指定 secret（我们不做签名 Cookie）
     parseOptions: {
@@ -55,7 +57,7 @@ const authPlugin: FastifyPluginAsync = async (app) => {
       httpOnly: true,
       sameSite: app.config.authCookieSameSite as 'lax' | 'strict' | 'none',
       secure: app.config.authCookieSecure,
-      domain: app.config.authCookieDomain,
+      domain: cookieDomain,
       path: '/', // 默认路径
     },
   })
@@ -108,7 +110,7 @@ const authPlugin: FastifyPluginAsync = async (app) => {
       httpOnly: true,
       secure: app.config.authCookieSecure,
       sameSite: app.config.authCookieSameSite as 'lax' | 'strict' | 'none',
-      domain: app.config.authCookieDomain, // 例如 .yourdomain.com；本地可不设
+      domain: cookieDomain, // 例如 .yourdomain.com；本地可不设
       path: '/', // 也可限制到 '/auth' 路径
       maxAge: maxAge > 0 ? maxAge : undefined, // 秒；可不设 → 会话期 Cookie
     })
@@ -117,7 +119,7 @@ const authPlugin: FastifyPluginAsync = async (app) => {
   app.decorate('clearRefreshCookie', (reply: FastifyReply) => {
     reply.clearCookie(app.config.authCookieName, {
       path: '/',
-      domain: app.config.authCookieDomain,
+      domain: cookieDomain,
     })
   })
 
@@ -129,6 +131,7 @@ const authPlugin: FastifyPluginAsync = async (app) => {
    * 验证通过后，可从 request.user 拿到解码后的载荷（如 sub/role 等）。
    */
   app.decorate('verifyAccess', async (request: FastifyRequest /* , reply: FastifyReply */) => {
+    if (request.method === 'OPTIONS') return
     try {
       // 使用我们上面注册的命名空间别名方法
       await request.accessVerify()
@@ -185,6 +188,7 @@ const authPlugin: FastifyPluginAsync = async (app) => {
    */
   app.decorate('roleGuard', (...roles: string[]) => {
     return async (request: FastifyRequest /* , reply: FastifyReply */) => {
+      if (request.method === 'OPTIONS') return
       // 假设 access 的 payload 中包含 role（如 'USER' / 'ADMIN'）
       const role = request.user?.role
       if (!role || !roles.includes(role)) {
