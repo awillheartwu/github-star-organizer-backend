@@ -160,6 +160,7 @@ jobs:
     runs-on: [self-hosted, linux, docker]
     container:
       image: code.forgejo.org/oci/docker:cli
+      docker_host: 'automount'
 
     steps:
       - run: ls -l /var/run/docker.sock
