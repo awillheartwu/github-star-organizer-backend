@@ -7,8 +7,11 @@ ENV PATH=$PNPM_HOME:$PATH
 RUN corepack enable
 
 FROM base AS deps
+# Avoid Prisma Client generation during dependency install; we'll run it explicitly later.
+ENV PRISMA_SKIP_POSTINSTALL_GENERATE=true
 COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
+RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store/v3 \
+    pnpm install --frozen-lockfile --ignore-scripts
 
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
