@@ -162,9 +162,20 @@ jobs:
       image: code.forgejo.org/oci/docker:cli
 
     steps:
-      - run: ls -l /var/run/docker.sock
-      - run: docker ps
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Sanity
+        run: |
+          pwd
+          ls -la
+          test -f Dockerfile
+
+      - name: Verify docker daemon
+        run: |
+          ls -l /var/run/docker.sock
+          docker ps
 
       - name: Build Docker image
         run: |
-          docker build -t gsor-backend:latest .
+          docker build -t gsor-backend:latest -f Dockerfile .
