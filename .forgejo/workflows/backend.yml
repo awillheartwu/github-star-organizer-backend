@@ -162,8 +162,8 @@ jobs:
       image: code.forgejo.org/oci/docker:cli
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - run: ls -l /var/run/docker.sock
+      - run: docker ps
 
       - name: Build Docker image
         run: |
