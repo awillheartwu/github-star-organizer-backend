@@ -22,6 +22,17 @@ export async function register(req: FastifyRequest, reply: FastifyReply) {
   return reply.code(201).send({ message: 'register success' })
 }
 
+/** 返回认证相关特性信息（如注册是否开放） */
+export async function getAuthFeatures(req: FastifyRequest, reply: FastifyReply) {
+  const ctx = getCtx(req)
+  return reply.send({
+    message: 'ok',
+    data: {
+      allowRegistration: Boolean(ctx.config?.authAllowRegistration),
+    },
+  })
+}
+
 /** 登录：access 返回 JSON；refresh 通过 httpOnly Cookie 下发 */
 export async function login(req: FastifyRequest, reply: FastifyReply) {
   const ctx = getCtx(req)

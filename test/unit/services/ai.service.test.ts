@@ -154,7 +154,7 @@ describe('ai.service summarizeProject', () => {
       createTags: false,
     })
     expect(r1.summaryShort).toBe('S')
-    expect(r1.summaryLong).toBeUndefined()
+    expect(r1.summaryLong).toBeNull()
     expect(r1.tagsCreated).toEqual([])
     expect(r1.tagsLinked).toEqual([])
 
@@ -171,7 +171,7 @@ describe('ai.service summarizeProject', () => {
       },
     })
     const r2 = await aiService.summarizeProject(ctx, p2.id, { style: 'long', createTags: false })
-    expect(r2.summaryShort).toBeUndefined()
+    expect(r2.summaryShort).toBeNull()
     expect(r2.summaryLong).toBe('L')
   })
 

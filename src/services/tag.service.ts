@@ -1,7 +1,7 @@
 import { Static } from '@sinclair/typebox'
 import { TagQuerySchema, CreateTagBodySchema } from '../schemas/tag.schema'
 import { AppError } from '../helpers/error.helper'
-import { Tag } from '@prisma/client'
+import { Prisma, Tag } from '@prisma/client'
 import { HTTP_STATUS, ERROR_TYPES } from '../constants/errorCodes'
 import type { TagWithRelations } from '../helpers/transform.helper.js'
 import { toTagDto } from '../helpers/transform.helper'
@@ -12,6 +12,23 @@ type CreateTagBody = Static<typeof CreateTagBodySchema>
 
 /** @internal 允许排序字段白名单 */
 const ORDERABLE = new Set<keyof Tag>(['createdAt', 'updatedAt', 'name'])
+const ORDER_BY_PROJECT_COUNT = 'projectCount'
+
+function buildTagOrder(
+  orderBy?: string,
+  orderDirection?: 'asc' | 'desc'
+): Prisma.TagOrderByWithRelationInput[] {
+  const direction = orderDirection === 'asc' ? 'asc' : 'desc'
+  if (orderBy === ORDER_BY_PROJECT_COUNT) {
+    return [{ projects: { _count: direction } }, { createdAt: 'desc' }]
+  }
+
+  if (orderBy && ORDERABLE.has(orderBy as keyof Tag)) {
+    return [{ [orderBy]: direction } as Prisma.TagOrderByWithRelationInput, { createdAt: 'desc' }]
+  }
+
+  return [{ projects: { _count: 'desc' } }, { createdAt: 'desc' }]
+}
 
 /**
  * 分页列出标签，支持按关键词、归档状态与排序。
@@ -31,12 +48,7 @@ export async function getTagsService(ctx: Ctx, query: TagQuery) {
   }
 
   // 构建排序
-  const order: Record<string, 'asc' | 'desc'> = {}
-  if (orderBy && ORDERABLE.has(orderBy)) {
-    order[orderBy] = orderDirection || 'asc'
-  } else {
-    order.createdAt = 'desc' // 默认按创建时间降序
-  }
+  const order = buildTagOrder(orderBy, orderDirection)
 
   ctx.log.debug({ conditions, order, offset, limit }, 'tag.list query built')
 
@@ -70,20 +82,41 @@ export async function getTagsService(ctx: Ctx, query: TagQuery) {
  * @returns 标签 DTO；不存在或已归档返回 null
  * @category Tag
  */
-export async function getTagByIdService(ctx: Ctx, id: string) {
-  const tag = await ctx.prisma.tag.findUnique({
-    where: { id },
-    include: {
-      projects: {
-        where: { project: { archived: false } },
-        include: { project: { select: { id: true, name: true, fullName: true, url: true } } },
-        orderBy: [{ project: { createdAt: 'desc' } }],
+export async function getTagByIdService(
+  ctx: Ctx,
+  id: string,
+  options?: { page?: number; pageSize?: number }
+) {
+  const page = options?.page && options.page > 0 ? options.page : 1
+  const pageSize = options?.pageSize && options.pageSize > 0 ? options.pageSize : 20
+  const skip = (page - 1) * pageSize
+
+  const [tag, total] = await Promise.all([
+    ctx.prisma.tag.findUnique({
+      where: { id },
+      include: {
+        projects: {
+          where: { project: { archived: false } },
+          include: { project: { select: { id: true, name: true, fullName: true, url: true } } },
+          orderBy: [{ project: { createdAt: 'desc' } }],
+          skip,
+          take: pageSize,
+        },
       },
-    },
-  })
+    }),
+    ctx.prisma.projectTag.count({
+      where: { tagId: id, project: { archived: false } },
+    }),
+  ])
   if (!tag || tag.archived) return null
   ctx.log.debug({ tag }, 'tag found')
-  return toTagDto(tag as TagWithRelations)
+  const dto = toTagDto(tag as TagWithRelations)
+  return {
+    ...dto,
+    projectsTotal: total,
+    projectsPage: page,
+    projectsPageSize: pageSize,
+  }
 }
 
 /**

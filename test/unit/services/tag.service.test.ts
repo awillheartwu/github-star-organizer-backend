@@ -212,7 +212,7 @@ describe('TagService', () => {
       })
     })
 
-    it('should return tag with project relations', async () => {
+    it('should return tag with project relations and pagination metadata', async () => {
       const result = await tagService.getTagByIdService(ctx, testTag.id)
 
       expect(result).toBeDefined()
@@ -221,6 +221,9 @@ describe('TagService', () => {
       expect(result?.description).toBe('Test tag description')
       expect(result?.projects).toHaveLength(1)
       expect(result?.projects[0].id).toBeDefined()
+      expect(result?.projectsTotal).toBe(1)
+      expect(result?.projectsPage).toBe(1)
+      expect(result?.projectsPageSize).toBe(20)
     })
 
     it('should return null for non-existent tag', async () => {
@@ -249,6 +252,37 @@ describe('TagService', () => {
 
       expect(result).toBeDefined()
       expect(result?.projects).toHaveLength(0)
+      expect(result?.projectsTotal).toBe(0)
+    })
+
+    it('should support pagination options', async () => {
+      // create extra projects
+      const additionalProjects = await Promise.all(
+        Array.from({ length: 25 }).map((_, idx) =>
+          prisma.project.create({
+            data: {
+              githubId: 2000 + idx,
+              name: `proj-${idx}`,
+              fullName: `user/proj-${idx}`,
+              url: `https://github.com/user/proj-${idx}`,
+            },
+          })
+        )
+      )
+      for (const project of additionalProjects) {
+        await prisma.projectTag.create({
+          data: {
+            projectId: project.id,
+            tagId: testTag.id,
+          },
+        })
+      }
+
+      const page2 = await tagService.getTagByIdService(ctx, testTag.id, { page: 2, pageSize: 20 })
+      expect(page2?.projectsPage).toBe(2)
+      expect(page2?.projectsPageSize).toBe(20)
+      expect(page2?.projectsTotal).toBe(26)
+      expect(page2?.projects).toHaveLength(6)
     })
   })
 

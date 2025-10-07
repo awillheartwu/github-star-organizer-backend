@@ -1,5 +1,6 @@
 // src/helpers/transform.ts
 import type { Tag, Project } from '@prisma/client'
+import { sanitizeMultilineText } from './text.helper'
 
 /**
  * Prisma include 形态下的 Project：
@@ -55,8 +56,18 @@ export function toProjectDto(p: ProjectWithRelations): ProjectDto {
     description: pt.tag.description ?? null,
   }))
   const urls = p.videoLinks.map((v) => v.url)
+  let summaryShort: string | null = p.summaryShort ?? null
+  if (typeof p.summaryShort === 'string') {
+    const cleaned = sanitizeMultilineText(p.summaryShort).trim()
+    summaryShort = cleaned || null
+  }
+  let summaryLong: string | null = p.summaryLong ?? null
+  if (typeof p.summaryLong === 'string') {
+    const cleaned = sanitizeMultilineText(p.summaryLong).trim()
+    summaryLong = cleaned || null
+  }
   // 用展开保留 Project 的所有标量字段，然后覆盖 relations 字段
-  return { ...p, tags: flatTags, videoLinks: urls }
+  return { ...p, summaryShort, summaryLong, tags: flatTags, videoLinks: urls }
 }
 
 /** Projects批量脱壳 */

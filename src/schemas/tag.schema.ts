@@ -14,6 +14,11 @@ export const TagQuerySchema = Type.Object({
   orderDirection: Type.Optional(Type.Union([Type.Literal('asc'), Type.Literal('desc')])),
 })
 
+export const TagDetailQuerySchema = Type.Object({
+  projectsPage: Type.Optional(Type.Integer({ minimum: 1 })),
+  projectsPageSize: Type.Optional(Type.Integer({ minimum: 1, maximum: 100 })),
+})
+
 // 项目精简字段（用于 Tag 详情里的 projects 数组）
 const ProjectBrief = Type.Pick(ProjectPublic, ['id', 'name', 'fullName', 'url'] as const)
 
@@ -22,6 +27,9 @@ export const TagDetailSchema = Type.Intersect([
   TagPublic,
   Type.Object({
     projects: Type.Array(ProjectBrief),
+    projectsTotal: Type.Number(),
+    projectsPage: Type.Number(),
+    projectsPageSize: Type.Number(),
   }),
 ])
 

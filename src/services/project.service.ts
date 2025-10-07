@@ -5,7 +5,7 @@ import { AppError } from '../helpers/error.helper'
 import { HTTP_STATUS, ERROR_TYPES } from '../constants/errorCodes'
 import type { ProjectWithRelations } from '../helpers/transform.helper'
 import { toProjectDto, toProjectDtos } from '../helpers/transform.helper'
-import { Project } from '@prisma/client'
+import { Prisma, Project } from '@prisma/client'
 import { Ctx } from '../helpers/context.helper'
 
 type ProjectQuery = Static<typeof ProjectQuerySchema> & { offset: number; limit: number }
@@ -25,6 +25,7 @@ const ORDERABLE = new Set<keyof Project>([
   'lastCommit',
   'lastSyncAt',
   'name',
+  'pinned',
 ])
 
 /**
@@ -146,11 +147,12 @@ export async function getProjectsService(ctx: Ctx, query: ProjectQuery) {
     }
   }
 
-  const order: Record<string, 'asc' | 'desc'> = {}
+  const order: Prisma.ProjectOrderByWithRelationInput[] = [{ pinned: 'desc' }]
   if (orderBy && ORDERABLE.has(orderBy)) {
-    order[orderBy] = orderDirection || 'asc'
+    const direction = orderDirection === 'asc' ? 'asc' : 'desc'
+    order.push({ [orderBy]: direction } as Prisma.ProjectOrderByWithRelationInput)
   } else {
-    order['createdAt'] = 'desc' // 默认
+    order.push({ createdAt: 'desc' })
   }
 
   ctx.log.debug({ conditions, order, offset, limit }, 'project.list query built')
@@ -227,7 +229,6 @@ export async function getProjectByIdService(ctx: Ctx, id: string) {
     },
   })
   if (!project) return null
-  ctx.log.debug({ project }, 'project found')
   // 脱壳
   return toProjectDto(project as unknown as ProjectWithRelations)
 }

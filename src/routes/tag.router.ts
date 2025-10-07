@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify'
 import {
   TagQuerySchema,
+  TagDetailQuerySchema,
   CreateTagBodySchema,
   BaseTagResponseSchema,
   TagListResponseSchema,
@@ -35,6 +36,7 @@ export default async function (fastify: FastifyInstance) {
         description: '获取单个标签',
         tags: ['Tag'],
         params: Type.Object({ id: Type.String({ format: 'uuid' }) }),
+        querystring: TagDetailQuerySchema,
         response: { 200: BaseTagResponseSchema },
         summary: 'Get a tag by id',
         security: [{ bearerAuth: [] }],

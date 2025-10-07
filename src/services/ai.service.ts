@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto'
 import { generateWithProvider, type AiClientOptions } from './ai.client'
 import { AppError } from '../helpers/error.helper'
 import { HTTP_STATUS, ERROR_TYPES } from '../constants/errorCodes'
+import { sanitizeMultilineText } from '../helpers/text.helper'
 
 /**
  * 生成指定项目的 AI 摘要，并可选创建/关联标签与落库历史。
@@ -88,8 +89,12 @@ export async function summarizeProject(
     throw new AppError('AI response is not valid JSON', 502, ERROR_TYPES.INTERNAL)
   }
 
-  const shortText = typeof parsed.short === 'string' ? parsed.short : undefined
-  const longText = typeof parsed.long === 'string' ? parsed.long : undefined
+  const shortTextSanitized =
+    typeof parsed.short === 'string' ? sanitizeMultilineText(parsed.short).trim() : ''
+  const longTextSanitized =
+    typeof parsed.long === 'string' ? sanitizeMultilineText(parsed.long).trim() : ''
+  const shortText = shortTextSanitized ? shortTextSanitized : undefined
+  const longText = longTextSanitized ? longTextSanitized : undefined
   const tagNames: string[] = Array.isArray(parsed.tags)
     ? parsed.tags.map((t) => String(t)).filter(Boolean)
     : []
@@ -115,8 +120,8 @@ export async function summarizeProject(
   // 更新 Project 上的最新摘要字段（不看 style，有就写）
   try {
     const patch: Record<string, unknown> = {}
-    if (shortText) patch['summaryShort'] = shortText
-    if (longText) patch['summaryLong'] = longText
+    if (shortText !== undefined) patch['summaryShort'] = shortText
+    if (longText !== undefined) patch['summaryLong'] = longText
     // 元数据：记录本次生成的时间、语言、模型、输入源哈希
     patch['aiSummarizedAt'] = new Date()
     if (options.lang) patch['aiSummaryLang'] = options.lang
@@ -151,8 +156,8 @@ export async function summarizeProject(
   }
 
   return {
-    summaryShort: shortText,
-    summaryLong: longText,
+    summaryShort: shortText ?? null,
+    summaryLong: longText ?? null,
     model: completion.model,
     lang: options.lang || 'zh',
     tagsCreated: created,

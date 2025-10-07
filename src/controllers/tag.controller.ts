@@ -1,6 +1,6 @@
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { Static } from '@sinclair/typebox'
-import { TagQuerySchema, CreateTagBodySchema } from '../schemas/tag.schema'
+import { TagQuerySchema, TagDetailQuerySchema, CreateTagBodySchema } from '../schemas/tag.schema'
 import { getPagination } from '../helpers/pagination.helper'
 import { AppError } from '../helpers/error.helper'
 import { HTTP_STATUS, ERROR_TYPES } from '../constants/errorCodes'
@@ -9,6 +9,7 @@ import { getCtx } from '../helpers/context.helper'
 import * as tagService from '../services/tag.service'
 
 type TagQuery = Static<typeof TagQuerySchema>
+type TagDetailQuery = Static<typeof TagDetailQuerySchema>
 type CreateTagBody = Static<typeof CreateTagBodySchema>
 
 export async function getTags(req: FastifyRequest<{ Querystring: TagQuery }>, reply: FastifyReply) {
@@ -19,13 +20,15 @@ export async function getTags(req: FastifyRequest<{ Querystring: TagQuery }>, re
 }
 
 export async function getTagById(
-  req: FastifyRequest<{ Params: { id: string } }>,
+  req: FastifyRequest<{ Params: { id: string }; Querystring: TagDetailQuery }>,
   reply: FastifyReply
 ) {
   // 获取单个 tag
   const ctx = getCtx(req)
   const { id } = req.params
-  const tag = await tagService.getTagByIdService(ctx, id)
+  const page = Number(req.query?.projectsPage ?? 1) || 1
+  const pageSize = Number(req.query?.projectsPageSize ?? 20) || 20
+  const tag = await tagService.getTagByIdService(ctx, id, { page, pageSize })
   if (!tag) {
     throw new AppError(
       `Tag not found: ${id}`,

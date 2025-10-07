@@ -47,6 +47,13 @@ export const BasicMessageSchema = Type.Object({
   message: Type.String(),
 })
 
+export const AuthFeaturesResponseSchema = Type.Object({
+  message: Type.String(),
+  data: Type.Object({
+    allowRegistration: Type.Boolean(),
+  }),
+})
+
 // —— 便于 controller 推断 body 类型 —— //
 export type RegisterBody = Static<typeof RegisterBodySchema>
 export type LoginBody = Static<typeof LoginBodySchema>

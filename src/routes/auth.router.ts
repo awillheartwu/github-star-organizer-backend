@@ -8,10 +8,25 @@ import {
   AccessTokenResponseSchema,
   MeResponseSchema,
   BasicMessageSchema,
+  AuthFeaturesResponseSchema,
 } from '../schemas/auth.schema'
 import { authController } from '../controllers'
 
 export default async function authRoutes(fastify: FastifyInstance) {
+  // 公共信息：返回部分开放式 auth 配置
+  fastify.get(
+    '/auth/features',
+    {
+      schema: {
+        tags: [AuthTag],
+        summary: 'Auth features',
+        description: '返回认证相关特性配置',
+        response: { 200: AuthFeaturesResponseSchema },
+      },
+    },
+    authController.getAuthFeatures
+  )
+
   // 注册（受开关控制，controller 内部判断 config.authAllowRegistration）
   fastify.post(
     '/auth/register',

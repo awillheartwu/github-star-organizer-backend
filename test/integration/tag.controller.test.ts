@@ -180,9 +180,29 @@ describe('Tag Controller Integration Tests', () => {
 
       const result = JSON.parse(createResponse.payload)
       tagId = result.data.id
+
+      const prisma = TestDatabase.getInstance()
+      // create 25 associated projects (plus 1 maybe) for pagination tests
+      const projects = await Promise.all(
+        Array.from({ length: 25 }).map((_, idx) =>
+          prisma.project.create({
+            data: {
+              githubId: 8000 + idx,
+              name: `tag-project-${idx}`,
+              fullName: `user/tag-project-${idx}`,
+              url: `https://github.com/user/tag-project-${idx}`,
+            },
+          })
+        )
+      )
+      for (const project of projects) {
+        await prisma.projectTag.create({
+          data: { projectId: project.id, tagId },
+        })
+      }
     })
 
-    it('should get tag by id', async () => {
+    it('should get tag by id with paginated projects', async () => {
       const response = await app.inject({
         method: 'GET',
         url: `/tags/${tagId}`,
@@ -196,6 +216,27 @@ describe('Tag Controller Integration Tests', () => {
       expect(result.message).toBe('get tag by id')
       expect(result.data.id).toBe(tagId)
       expect(result.data.name).toBe('SingleTag')
+      expect(result.data.projectsPage).toBe(1)
+      expect(result.data.projectsPageSize).toBe(20)
+      expect(result.data.projectsTotal).toBe(25)
+      expect(result.data.projects.length).toBe(20)
+    })
+
+    it('should return requested projects page', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: `/tags/${tagId}?projectsPage=2&projectsPageSize=10`,
+        headers: {
+          authorization: `Bearer ${authToken}`,
+        },
+      })
+
+      expect(response.statusCode).toBe(200)
+      const result = JSON.parse(response.payload)
+      expect(result.data.projectsPage).toBe(2)
+      expect(result.data.projectsPageSize).toBe(10)
+      expect(result.data.projectsTotal).toBe(25)
+      expect(result.data.projects.length).toBe(10)
     })
 
     it('should return 404 for non-existent tag', async () => {

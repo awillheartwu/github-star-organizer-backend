@@ -19,6 +19,36 @@ describe('E2E Auth & RBAC Smoke', () => {
 
   beforeEach(async () => {
     await TestDatabase.clearAll()
+    app.config.authAllowRegistration = true
+  })
+
+  it('auth features endpoint reflects registration availability', async () => {
+    // 默认启用
+    const enabledRes = await app.inject({ method: 'GET', url: '/auth/features' })
+    expect(enabledRes.statusCode).toBe(200)
+    const enabledBody = JSON.parse(enabledRes.payload) as {
+      data: { allowRegistration: boolean }
+    }
+    expect(enabledBody.data.allowRegistration).toBe(true)
+
+    // 切换为禁用 -> endpoint & register 均受影响
+    app.config.authAllowRegistration = false
+    const disabledRes = await app.inject({ method: 'GET', url: '/auth/features' })
+    expect(disabledRes.statusCode).toBe(200)
+    const disabledBody = JSON.parse(disabledRes.payload) as {
+      data: { allowRegistration: boolean }
+    }
+    expect(disabledBody.data.allowRegistration).toBe(false)
+
+    const reg = await app.inject({
+      method: 'POST',
+      url: '/auth/register',
+      payload: { email: 'disabled@example.com', password: 'pwd123456' },
+    })
+    expect(reg.statusCode).toBe(403)
+
+    // 恢复默认，避免影响后续测试
+    app.config.authAllowRegistration = true
   })
 
   it('register -> login -> me -> refresh -> logout flow works', async () => {
