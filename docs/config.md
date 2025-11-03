@@ -67,6 +67,7 @@
 | BULL_UI_ENABLED | boolean | no | false | 开启 Bull Board 可视化界面 |
 | BULL_UI_PATH | string | no | /admin/queues/ui | Bull Board 基础路径 |
 | BULL_UI_READONLY | boolean | no | true | 仅查看（禁用删除/重试等操作） |
+| BULL_UI_PUBLIC | boolean | no | false | 开启后访问 Bull Board 不需要鉴权 |
 | MAINT_ENABLED | boolean | no | true | 开启日常维护 |
 | MAINT_CRON | string | no | 0 3 * * * | 维护任务 cron（默认 03:00） |
 

@@ -1,6 +1,7 @@
 import type { Ctx } from '../helpers/context.helper'
 import type { SyncStats } from '../types/sync.types'
 import type { SyncState as PrismaSyncState } from '@prisma/client'
+import { sanitizeEtag } from '../utils/etag.util'
 
 /**
  * 持久化“同步/任务”运行状态的实体。
@@ -66,7 +67,7 @@ export async function setCursorEtag(
 ) {
   const patch: { cursor?: string | null; etag?: string | null } = {}
   if (data.cursor !== undefined) patch.cursor = data.cursor
-  if (data.etag !== undefined) patch.etag = data.etag
+  if (data.etag !== undefined) patch.etag = sanitizeEtag(data.etag) ?? null
   return ctx.prisma.syncState.update({ where: { source_key: { source, key } }, data: patch })
 }
 
@@ -91,7 +92,7 @@ export async function markSuccess(
     lastErrorAt: null,
   }
   if (info.cursor !== undefined) payload.cursor = info.cursor
-  if (info.etag !== undefined) payload.etag = info.etag
+  if (info.etag !== undefined) payload.etag = sanitizeEtag(info.etag)
   if (info.stats) {
     const json = JSON.stringify(info.stats)
     payload.statsJson = json.length > 4096 ? json.slice(0, 4096) : json

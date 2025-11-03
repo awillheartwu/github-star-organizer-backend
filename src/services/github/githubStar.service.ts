@@ -13,6 +13,7 @@ import {
 } from '../sync.state.service'
 import { AppError } from '../../helpers/error.helper'
 import { ERROR_TYPES, HTTP_STATUS } from '../../constants/errorCodes'
+import { sanitizeEtag } from '../../utils/etag.util'
 /** @internal 将 GitHub starred 项映射为 Project 的数据结构 */
 function mapToProjectData(item: GitHubStarredItem) {
   const r = item.repo
@@ -96,7 +97,7 @@ export async function handleSyncStarsJob(ctx: Ctx, data: SyncJobData): Promise<S
   await ensureState(ctx, source, key)
   await touchRun(ctx, source, key, startedAt)
   const state = await getState(ctx, source, key)
-  const prevEtag = state?.etag ?? undefined
+  const prevEtag = sanitizeEtag(state?.etag) ?? undefined
   const prevCursor = state?.cursor ?? undefined
   // full 忽略 etag/cursor；incremental 使用
   const etagForFetch = isFull ? undefined : prevEtag

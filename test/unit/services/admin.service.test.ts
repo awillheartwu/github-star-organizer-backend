@@ -164,7 +164,8 @@ describe('AdminService', () => {
           lastSuccessAt: new Date('2023-01-01T09:45:00Z'),
           lastErrorAt: new Date('2023-01-01T09:30:00Z'),
           lastError: 'Previous error message',
-          statsJson: '{"processed": 100, "added": 50}',
+          statsJson:
+            '{"scanned ": "100", "created ": "50", "durationMs ": "1200", "startedAt": "2023-01-01 T10: 00: 00Z", "finishedAt": "2023-01-01 T10: 05: 00Z"}',
         },
       })
     })
@@ -181,7 +182,15 @@ describe('AdminService', () => {
         lastSuccessAt: '2023-01-01T09:45:00.000Z',
         lastErrorAt: '2023-01-01T09:30:00.000Z',
         lastError: 'Previous error message',
-        statsJson: '{"processed": 100, "added": 50}',
+        statsJson:
+          '{"scanned":100,"created":50,"durationMs":1200,"startedAt":"2023-01-01T10:00:00.000Z","finishedAt":"2023-01-01T10:05:00.000Z"}',
+        stats: {
+          scanned: 100,
+          created: 50,
+          durationMs: 1200,
+          startedAt: '2023-01-01T10:00:00.000Z',
+          finishedAt: '2023-01-01T10:05:00.000Z',
+        },
       })
       expect(result.id).toBeDefined()
       expect(result.updatedAt).toBeDefined()

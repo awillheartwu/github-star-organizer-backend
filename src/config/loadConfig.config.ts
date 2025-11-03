@@ -170,6 +170,9 @@ export const EnvSchema = Type.Object(
     BULL_UI_READONLY: Type.Optional(
       Type.Boolean({ default: true, description: '仅查看（禁用删除/重试等操作）' })
     ),
+    BULL_UI_PUBLIC: Type.Optional(
+      Type.Boolean({ default: false, description: '允许无需鉴权访问 Bull Board' })
+    ),
 
     // 维护任务（repeatable job）
     MAINT_ENABLED: Type.Optional(Type.Boolean({ default: true, description: '开启日常维护' })),
@@ -282,6 +285,7 @@ export const AppConfigSchema = Type.Object(
     bullUiEnabled: Type.Optional(Type.Boolean()),
     bullUiPath: Type.Optional(Type.String()),
     bullUiReadOnly: Type.Optional(Type.Boolean()),
+    bullUiPublic: Type.Optional(Type.Boolean()),
 
     // 维护任务开关/时间
     maintEnabled: Type.Boolean(),
@@ -370,6 +374,7 @@ export function loadConfig(): AppConfig {
     BULL_UI_ENABLED: process.env.BULL_UI_ENABLED,
     BULL_UI_PATH: process.env.BULL_UI_PATH,
     BULL_UI_READONLY: process.env.BULL_UI_READONLY,
+    BULL_UI_PUBLIC: process.env.BULL_UI_PUBLIC,
 
     MAINT_ENABLED: process.env.MAINT_ENABLED,
     MAINT_CRON: process.env.MAINT_CRON,
@@ -446,6 +451,7 @@ export function loadConfig(): AppConfig {
     bullUiEnabled: coerced.BULL_UI_ENABLED ?? false,
     bullUiPath: coerced.BULL_UI_PATH ?? '/admin/queues/ui',
     bullUiReadOnly: coerced.BULL_UI_READONLY ?? true,
+    bullUiPublic: coerced.BULL_UI_PUBLIC ?? false,
 
     maintEnabled: coerced.MAINT_ENABLED ?? true,
     maintCron: coerced.MAINT_CRON ?? '0 3 * * *',

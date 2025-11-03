@@ -1,5 +1,6 @@
 // test/helpers/app.helper.ts
 import Fastify, { FastifyInstance } from 'fastify'
+import fp from 'fastify-plugin'
 import configPlugin from '../../src/plugins/config'
 import authPlugin from '../../src/plugins/auth'
 import { handleServerError } from '../../src/helpers/error.helper'
@@ -86,14 +87,20 @@ export async function buildTestApp(): Promise<FastifyInstance> {
     maintenance: makeQueueStub('maintenance'),
     aiSummary: makeQueueStub('ai-summary'),
   }
-  // 将 stub 按 unknown → 目标声明类型断言，避免使用 any
-  app.decorate(
-    'queues',
-    queues as unknown as {
-      syncStars: Queue<SyncJobData, SyncStats>
-      maintenance?: Queue
-      aiSummary: Queue
-    }
+  await app.register(
+    fp(
+      async (instance) => {
+        instance.decorate(
+          'queues',
+          queues as unknown as {
+            syncStars: Queue<SyncJobData, SyncStats>
+            maintenance?: Queue
+            aiSummary: Queue
+          }
+        )
+      },
+      { name: 'bullmq', dependencies: ['config'] }
+    )
   )
 
   // 鉴权与 cookie/jwt

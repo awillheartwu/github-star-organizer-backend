@@ -137,32 +137,104 @@ export async function getAiBatchById(req: FastifyRequest, reply: FastifyReply) {
 }
 
 export async function getQueuesStatus(req: FastifyRequest, reply: FastifyReply) {
-  type QueueCounts = {
-    waiting: number
-    active: number
-    delayed: number
-    completed: number
-    failed: number
+  type QueueLike = {
+    getJobCounts: (...args: string[]) => Promise<Record<string, number>>
+    isPaused?: () => Promise<boolean>
   }
-  type QueueLike = { getJobCounts: (...args: string[]) => Promise<Partial<QueueCounts>> }
-  const getCounts = async (q: QueueLike): Promise<QueueCounts> => {
-    try {
-      const c = await q.getJobCounts('waiting', 'active', 'delayed', 'completed', 'failed')
+  const computeCounts = async (queue?: QueueLike) => {
+    if (!queue) {
       return {
-        waiting: Number(c.waiting || 0),
-        active: Number(c.active || 0),
-        delayed: Number(c.delayed || 0),
-        completed: Number(c.completed || 0),
-        failed: Number(c.failed || 0),
+        waiting: 0,
+        active: 0,
+        delayed: 0,
+        completed: 0,
+        failed: 0,
+        paused: 0,
+        waitingChildren: 0,
+        prioritized: 0,
+        stalled: 0,
+        total: 0,
+        totalProcessed: 0,
+        successRate: undefined,
+        isPaused: false,
+        updatedAt: new Date().toISOString(),
+      }
+    }
+    try {
+      const counts = await queue.getJobCounts(
+        'waiting',
+        'active',
+        'delayed',
+        'completed',
+        'failed',
+        'paused',
+        'waiting-children',
+        'prioritized',
+        'stalled'
+      )
+      const waiting = Number(counts.waiting || 0)
+      const active = Number(counts.active || 0)
+      const delayed = Number(counts.delayed || 0)
+      const completed = Number(counts.completed || 0)
+      const failed = Number(counts.failed || 0)
+      const paused = Number(counts.paused || 0)
+      const waitingChildren = Number(counts['waiting-children'] || 0)
+      const prioritized = Number(counts.prioritized || 0)
+      const stalled = Number(counts.stalled || 0)
+      const total =
+        waiting +
+        active +
+        delayed +
+        completed +
+        failed +
+        paused +
+        waitingChildren +
+        prioritized +
+        stalled
+      const totalProcessed = completed + failed
+      const successRate =
+        totalProcessed > 0 ? Math.round((completed / totalProcessed) * 1000) / 1000 : undefined
+      const isPaused =
+        typeof queue.isPaused === 'function' ? await queue.isPaused().catch(() => false) : false
+      return {
+        waiting,
+        active,
+        delayed,
+        completed,
+        failed,
+        paused,
+        waitingChildren,
+        prioritized,
+        stalled,
+        total,
+        totalProcessed,
+        successRate,
+        isPaused,
+        updatedAt: new Date().toISOString(),
       }
     } catch {
-      return { waiting: 0, active: 0, delayed: 0, completed: 0, failed: 0 }
+      return {
+        waiting: 0,
+        active: 0,
+        delayed: 0,
+        completed: 0,
+        failed: 0,
+        paused: 0,
+        waitingChildren: 0,
+        prioritized: 0,
+        stalled: 0,
+        total: 0,
+        totalProcessed: 0,
+        successRate: undefined,
+        isPaused: false,
+        updatedAt: new Date().toISOString(),
+      }
     }
   }
   const queues = {
-    syncStars: await getCounts(req.server.queues.syncStars),
-    aiSummary: await getCounts(req.server.queues.aiSummary),
-    maintenance: await getCounts(req.server.queues.maintenance),
+    syncStars: await computeCounts(req.server.queues.syncStars),
+    aiSummary: await computeCounts(req.server.queues.aiSummary),
+    maintenance: await computeCounts(req.server.queues.maintenance),
   }
   const config = {
     aiSummaryConcurrency: req.server.config.aiSummaryConcurrency,

@@ -39,6 +39,20 @@ export const ConflictEnqueueErrorSchema = Type.Intersect([
   }),
 ])
 
+export const SyncStatsSchema = Type.Object({
+  scanned: Type.Number(),
+  created: Type.Number(),
+  updated: Type.Number(),
+  unchanged: Type.Number(),
+  softDeleted: Type.Number(),
+  pages: Type.Number(),
+  rateLimitRemaining: Type.Optional(Type.Number()),
+  errors: Type.Optional(Type.Number()),
+  startedAt: Type.Optional(Type.String()),
+  finishedAt: Type.Optional(Type.String()),
+  durationMs: Type.Optional(Type.Number()),
+})
+
 export const SyncStateResponseSchema = Type.Object({
   id: Type.String(),
   source: Type.String(),
@@ -50,6 +64,7 @@ export const SyncStateResponseSchema = Type.Object({
   lastErrorAt: Type.Optional(Type.String()),
   lastError: Type.Optional(Type.String()),
   statsJson: Type.Optional(Type.String()),
+  latestStats: Type.Optional(SyncStatsSchema),
   updatedAt: Type.String(),
 })
 
@@ -155,6 +170,15 @@ export const QueueCountsSchema = Type.Object({
   delayed: Type.Number(),
   completed: Type.Number(),
   failed: Type.Number(),
+  paused: Type.Number(),
+  waitingChildren: Type.Number(),
+  prioritized: Type.Number(),
+  stalled: Type.Number(),
+  total: Type.Number(),
+  totalProcessed: Type.Number(),
+  successRate: Type.Optional(Type.Number()),
+  isPaused: Type.Boolean(),
+  updatedAt: Type.String(),
 })
 
 export const QueuesStatusResponseSchema = Type.Object({

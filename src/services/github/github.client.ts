@@ -1,6 +1,7 @@
 import { Octokit } from '@octokit/rest'
 import { RequestError } from '@octokit/request-error'
 import type { Ctx } from '../../helpers/context.helper'
+import { formatEtagForIfNoneMatch, sanitizeEtag } from '../../utils/etag.util'
 /**
  * GitHub Stars API 返回的单条记录（在 `accept: application/vnd.github.star+json` 下包含 `starred_at`）。
  * @category GitHub
@@ -144,7 +145,8 @@ export async function fetchStarredPage(
   const headers: Record<string, string> = {
     accept: 'application/vnd.github.star+json',
   }
-  if (etag) headers['If-None-Match'] = etag
+  const ifNoneMatch = formatEtagForIfNoneMatch(etag)
+  if (ifNoneMatch) headers['If-None-Match'] = ifNoneMatch
   try {
     const res = await withRetry(() =>
       octokit.request('GET /users/{username}/starred', {
@@ -157,10 +159,11 @@ export async function fetchStarredPage(
     )
     const remaining = Number(res.headers['x-ratelimit-remaining'] || '0')
     const reset = Number(res.headers['x-ratelimit-reset'] || '0')
-    const nextEtag = res.headers['etag']
+    const nextEtagHeader = res.headers['etag']
+    const nextEtag = typeof nextEtagHeader === 'string' ? sanitizeEtag(nextEtagHeader) : undefined
     return {
       items: res.data as unknown as GitHubStarredItem[],
-      etag: typeof nextEtag === 'string' ? nextEtag : undefined,
+      etag: nextEtag ?? undefined,
       rateLimitRemaining: Number.isFinite(remaining) ? remaining : undefined,
       rateLimitReset: Number.isFinite(reset) ? reset : undefined,
       notModified: false,
@@ -171,10 +174,11 @@ export async function fetchStarredPage(
     if (err instanceof RequestError && err.status === 304) {
       const remaining = Number(err.response?.headers?.['x-ratelimit-remaining'] || '0')
       const reset = Number(err.response?.headers?.['x-ratelimit-reset'] || '0')
-      const nextEtag = err.response?.headers?.['etag']
+      const nextEtagHeader = err.response?.headers?.['etag']
+      const nextEtag = typeof nextEtagHeader === 'string' ? sanitizeEtag(nextEtagHeader) : undefined
       return {
         items: [],
-        etag: typeof nextEtag === 'string' ? nextEtag : etag,
+        etag: nextEtag ?? sanitizeEtag(etag) ?? undefined,
         rateLimitRemaining: Number.isFinite(remaining) ? remaining : undefined,
         rateLimitReset: Number.isFinite(reset) ? reset : undefined,
         notModified: true,
@@ -189,7 +193,7 @@ export async function fetchStarredPage(
       const reset = Number(headers['x-ratelimit-reset'] || '0')
       return {
         items: [],
-        etag,
+        etag: sanitizeEtag(etag) ?? undefined,
         rateLimitRemaining: Number.isFinite(remaining) ? remaining : undefined,
         rateLimitReset: Number.isFinite(reset) ? reset : undefined,
         notModified: false,
@@ -238,7 +242,8 @@ export async function* iterateStarred(
 ) {
   const { username, perPage = 50, maxPages = 0, etag, abortOnNotModified = true, signal } = params
   let page = 1
-  let firstPageEtag = etag
+  const initialEtag = sanitizeEtag(etag)
+  let firstPageEtag = initialEtag ?? undefined
   // 0 = 不限；否则最多抓取 maxPages 页
   while (maxPages === 0 || page <= maxPages) {
     const res = await fetchStarredPage(octokit, {

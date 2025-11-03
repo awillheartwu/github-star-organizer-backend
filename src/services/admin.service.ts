@@ -5,6 +5,7 @@ import { AppError } from '../helpers/error.helper'
 import { ERROR_TYPES, HTTP_STATUS } from '../constants/errorCodes'
 import { SYNC_SOURCE_GITHUB_STARS, buildGithubStarsKey, getState } from './sync.state.service'
 import { createHash } from 'node:crypto'
+import { sanitizeEtag } from '../utils/etag.util'
 
 /** @internal 为手动同步参数生成短哈希（用于构建幂等 jobId） */
 /**
@@ -119,19 +120,51 @@ export async function getSyncStateSummaryService(ctx: Ctx) {
   if (!state) {
     throw new AppError('State not found', HTTP_STATUS.NOT_FOUND.statusCode, ERROR_TYPES.NOT_FOUND)
   }
+  const { statsJson, latestStats } = normalizeStatsJson(ctx, state?.statsJson)
+
   return {
     id: state.id,
     source: state.source,
     key: state.key,
     cursor: state.cursor ?? undefined,
-    etag: state.etag ?? undefined,
+    etag: sanitizeEtag(state.etag) ?? undefined,
     lastRunAt: state.lastRunAt?.toISOString(),
     lastSuccessAt: state.lastSuccessAt?.toISOString(),
     lastErrorAt: state.lastErrorAt?.toISOString(),
     lastError: state.lastError ?? undefined,
-    statsJson: state.statsJson ?? undefined,
+    statsJson,
+    latestStats: latestStats ?? undefined,
     updatedAt: state.updatedAt.toISOString(),
   }
+}
+
+function normalizeStatsJson(
+  ctx: Ctx,
+  raw: string | null | undefined
+): { statsJson: string | undefined; latestStats: SyncStats | undefined } {
+  if (!raw) {
+    return {
+      statsJson: undefined,
+      latestStats: undefined,
+    }
+  }
+  try {
+    const parsed = JSON.parse(raw) as SyncStats
+    return {
+      statsJson: escapeDoubleQuotes(JSON.stringify(parsed)),
+      latestStats: parsed,
+    }
+  } catch (error) {
+    ctx.log.warn({ err: error }, '[admin] failed to parse statsJson, returning raw value')
+    return {
+      statsJson: escapeDoubleQuotes(raw),
+      latestStats: undefined,
+    }
+  }
+}
+
+function escapeDoubleQuotes(value: string) {
+  return value.replace(/"/g, '\\"')
 }
 
 // —— 归档只读列表 —— //

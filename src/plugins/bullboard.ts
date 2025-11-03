@@ -55,6 +55,10 @@ export default fp(
       // ignore if queues not ready
     }
 
+    if (queues.length === 0) {
+      app.log.warn('[bullboard] Bull Board enabled but no queues were registered')
+    }
+
     createBullBoard({
       queues,
       serverAdapter: adapter,
@@ -63,8 +67,10 @@ export default fp(
 
     await app.register(
       async (instance) => {
-        instance.addHook('onRequest', app.verifyAccess)
-        instance.addHook('onRequest', app.roleGuard('ADMIN'))
+        if (!app.config.bullUiPublic) {
+          instance.addHook('onRequest', app.verifyAccess)
+          instance.addHook('onRequest', app.roleGuard('ADMIN'))
+        }
         // 只读模式：阻止对 bull-board mutation endpoints 的非幂等请求
         if (app.config.bullUiReadOnly) {
           instance.addHook('onRequest', async (req) => {
@@ -80,5 +86,5 @@ export default fp(
       { prefix: basePath }
     )
   },
-  { name: 'bullboard', dependencies: ['config', 'auth-plugin'] }
+  { name: 'bullboard', dependencies: ['config', 'auth-plugin', 'bullmq'] }
 )

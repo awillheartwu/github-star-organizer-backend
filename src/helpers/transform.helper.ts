@@ -67,7 +67,13 @@ export function toProjectDto(p: ProjectWithRelations): ProjectDto {
     summaryLong = cleaned || null
   }
   // 用展开保留 Project 的所有标量字段，然后覆盖 relations 字段
-  return { ...p, summaryShort, summaryLong, tags: flatTags, videoLinks: urls }
+  return {
+    ...p,
+    summaryShort,
+    summaryLong,
+    tags: flatTags,
+    videoLinks: urls,
+  }
 }
 
 /** Projects批量脱壳 */
