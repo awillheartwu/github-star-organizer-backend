@@ -13,6 +13,7 @@
 | AI_MODEL | string | no | deepseek-chat | AI 模型名称，如 deepseek-chat |
 | AI_TEMPERATURE | number | no | 0.3 | AI 采样温度（0~1），越大越发散 |
 | AI_SUMMARY_CONCURRENCY | number | no | 1 | AI 摘要任务并发（worker） |
+| AI_SUMMARY_LIMIT | number | no | 100 | AI 摘要批量扫描默认数量（1-800） |
 | AI_SUMMARY_CRON | string | no |  | AI 摘要批量扫描定时表达式（可空） |
 | AI_SUMMARY_STALE_DAYS | number | no | 365 | AI 摘要过期天数（TTL） |
 | AI_README_MAX_CHARS | number | no | 4000 | 读取 README 片段最大字符数 |

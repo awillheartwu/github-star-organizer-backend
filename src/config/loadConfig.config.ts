@@ -55,6 +55,9 @@ export const EnvSchema = Type.Object(
     AI_SUMMARY_CONCURRENCY: Type.Optional(
       Type.Number({ default: 1, description: 'AI 摘要任务并发（worker）' })
     ),
+    AI_SUMMARY_LIMIT: Type.Optional(
+      Type.Number({ default: 100, description: 'AI 摘要批量扫描默认数量（1-800）' })
+    ),
     AI_SUMMARY_CRON: Type.Optional(
       Type.String({ description: 'AI 摘要批量扫描定时表达式（可空）' })
     ),
@@ -217,6 +220,7 @@ export const AppConfigSchema = Type.Object(
     aiModel: Type.Optional(Type.String()),
     aiTemperature: Type.Optional(Type.Number()),
     aiSummaryConcurrency: Type.Optional(Type.Number()),
+    aiSummaryLimit: Type.Number(),
     aiSummaryCron: Type.Optional(Type.String()),
     aiSummaryStaleDays: Type.Optional(Type.Number()),
     aiReadmeMaxChars: Type.Optional(Type.Number()),
@@ -318,6 +322,7 @@ export function loadConfig(): AppConfig {
     AI_MODEL: process.env.AI_MODEL,
     AI_TEMPERATURE: process.env.AI_TEMPERATURE,
     AI_SUMMARY_CONCURRENCY: process.env.AI_SUMMARY_CONCURRENCY,
+    AI_SUMMARY_LIMIT: process.env.AI_SUMMARY_LIMIT,
     AI_SUMMARY_CRON: process.env.AI_SUMMARY_CRON || undefined,
     AI_SUMMARY_STALE_DAYS: process.env.AI_SUMMARY_STALE_DAYS,
     AI_README_MAX_CHARS: process.env.AI_README_MAX_CHARS,
@@ -394,6 +399,7 @@ export function loadConfig(): AppConfig {
     aiModel: coerced.AI_MODEL,
     aiTemperature: coerced.AI_TEMPERATURE,
     aiSummaryConcurrency: coerced.AI_SUMMARY_CONCURRENCY,
+    aiSummaryLimit: Math.max(1, Math.min(800, coerced.AI_SUMMARY_LIMIT ?? 100)),
     aiSummaryCron: coerced.AI_SUMMARY_CRON,
     aiSummaryStaleDays: coerced.AI_SUMMARY_STALE_DAYS,
     aiReadmeMaxChars: coerced.AI_README_MAX_CHARS,

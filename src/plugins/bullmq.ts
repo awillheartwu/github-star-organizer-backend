@@ -27,6 +27,7 @@ export default fp(
       config: app.config,
       redis: app.redis,
     })
+    const sanitizeSegment = (value: string) => value.replace(/:/g, '-')
     async function awaitAiRateLimit() {
       const limit = app.config.aiRpmLimit
       if (!limit || limit <= 0) return
@@ -490,7 +491,8 @@ export default fp(
               AiJobData,
               { limit?: number } & { force?: boolean; staleDaysOverride?: number }
             >
-            const limit = Math.max(1, Math.min(800, data?.limit ?? 100))
+            const defaultLimit = app.config.aiSummaryLimit
+            const limit = Math.max(1, Math.min(800, data?.limit ?? defaultLimit))
             const useForce = !!data?.force
             const staleDaysCfg = app.config.aiSummaryStaleDays ?? 365
             const staleDays = Math.max(0, data?.staleDaysOverride ?? staleDaysCfg)
@@ -538,7 +540,9 @@ export default fp(
             }
             let enqueued = 0
             for (const p of candidates) {
-              const jobId = `ai-summary:${p.id}:${data?.lang ?? '-'}:${data?.model ?? '-'}`
+              const langSegment = sanitizeSegment(data?.lang ?? 'any')
+              const modelSegment = sanitizeSegment(data?.model ?? 'default')
+              const jobId = `ai-summary:${p.id}:${langSegment}-${modelSegment}`
               const existed = await aiSummaryQueue.getJob(jobId)
               if (existed) {
                 const state = await existed.getState().catch(() => 'unknown')
@@ -629,7 +633,7 @@ export default fp(
       await syncStarsQueue.add(
         SYNC_STARS_JOB,
         { options: { mode: 'incremental' }, actor: 'cron', note: 'scheduled by cron' },
-        { jobId: 'sync-stars:cron', repeat: { pattern: app.config.syncStarsCron } }
+        { jobId: 'sync-stars:cron:default', repeat: { pattern: app.config.syncStarsCron } }
       )
       app.log.info(`[BullMQ] repeatable job registered with cron: ${app.config.syncStarsCron}`)
     }
@@ -639,7 +643,7 @@ export default fp(
       await maintenanceQueue.add(
         MAINTENANCE_JOB,
         { actor: 'cron' },
-        { jobId: 'maintenance:daily', repeat: { pattern: app.config.maintCron } }
+        { jobId: 'maintenance:daily:default', repeat: { pattern: app.config.maintCron } }
       )
       app.log.info(`[BullMQ] maintenance job registered with cron: ${app.config.maintCron}`)
     }
@@ -649,7 +653,7 @@ export default fp(
       await aiSummaryQueue.add(
         AI_SWEEP_JOB,
         { lang: 'zh' },
-        { jobId: 'ai-sweep:cron', repeat: { pattern: app.config.aiSummaryCron } }
+        { jobId: 'ai-sweep:cron:default', repeat: { pattern: app.config.aiSummaryCron } }
       )
       app.log.info(`[AI] sweep job registered with cron: ${app.config.aiSummaryCron}`)
     }

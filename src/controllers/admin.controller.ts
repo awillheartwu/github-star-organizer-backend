@@ -6,6 +6,57 @@ import * as adminService from '../services/admin.service'
 import { getPagination } from '../helpers/pagination.helper'
 import { AI_SUMMARY_JOB, AI_SWEEP_JOB } from '../constants/queueNames'
 
+type AiSummaryJobOptions = {
+  style?: 'short' | 'long' | 'both'
+  lang?: 'zh' | 'en'
+  model?: string
+  temperature?: number
+  createTags?: boolean
+  includeReadme?: boolean
+  readmeMaxChars?: number
+  overwrite?: boolean
+}
+
+function coerceAiSummaryOptions(raw?: Record<string, unknown>): AiSummaryJobOptions | undefined {
+  if (!raw) return undefined
+  const opts: AiSummaryJobOptions = {}
+  const { style, lang, model, temperature, createTags, includeReadme, readmeMaxChars, overwrite } =
+    raw
+
+  if (style === 'short' || style === 'long' || style === 'both') opts.style = style
+  if (lang === 'zh' || lang === 'en') opts.lang = lang
+  if (typeof model === 'string') opts.model = model
+  if (typeof temperature === 'number') opts.temperature = temperature
+  if (typeof createTags === 'boolean') opts.createTags = createTags
+  if (typeof includeReadme === 'boolean') opts.includeReadme = includeReadme
+  if (typeof readmeMaxChars === 'number') opts.readmeMaxChars = readmeMaxChars
+  if (typeof overwrite === 'boolean') opts.overwrite = overwrite
+
+  return Object.keys(opts).length > 0 ? opts : undefined
+}
+
+const RUNNING_JOB_STATES = new Set(['waiting', 'active', 'delayed', 'paused', 'waiting-children'])
+
+function sanitizeJobSegment(value?: string | null, fallback = 'default') {
+  return (value ?? fallback).replace(/:/g, '-')
+}
+
+async function getAiSummaryQueueRemaining(req: FastifyRequest) {
+  try {
+    const queue = req.server.queues.aiSummary
+    if (!queue) return undefined
+    const counts = await queue.getJobCounts()
+    const waiting = counts.waiting ?? 0
+    const delayed = counts.delayed ?? 0
+    const active = counts.active ?? 0
+    const waitingChildren = counts.waitingChildren ?? 0
+    const prioritized = counts.prioritized ?? 0
+    return waiting + delayed + active + waitingChildren + prioritized
+  } catch {
+    return undefined
+  }
+}
+
 export async function setRole(req: FastifyRequest, reply: FastifyReply) {
   const ctx = getCtx(req)
   const { userId, role } = req.body as { userId: string; role: 'USER' | 'ADMIN' }
@@ -43,15 +94,21 @@ export async function getArchivedProjectById(req: FastifyRequest, reply: Fastify
 
 export async function enqueueAiSummary(req: FastifyRequest, reply: FastifyReply) {
   const ctx = getCtx(req)
-  const body = req.body as { projectIds: string[]; options?: Record<string, unknown> }
+  const body = req.body as {
+    projectIds: string[]
+    options?: Record<string, unknown>
+    note?: string
+  }
+  const sanitizedOptions = coerceAiSummaryOptions(body.options)
+  const langSegment = sanitizeJobSegment(sanitizedOptions?.lang)
+  const modelSegment = sanitizeJobSegment(sanitizedOptions?.model)
   let enqueued = 0
   for (const id of body.projectIds || []) {
-    const jobId = `ai-summary:${id}:${body.options?.lang ?? '-'}:${body.options?.model ?? '-'}`
+    const jobId = `ai-summary:${id}:${langSegment}-${modelSegment}`
     const existed = await req.server.queues.aiSummary.getJob(jobId)
     if (existed) {
       const state = await existed.getState().catch(() => 'unknown')
-      const runningStates = new Set(['waiting', 'active', 'delayed', 'paused', 'waiting-children'])
-      if (!runningStates.has(state)) {
+      if (!RUNNING_JOB_STATES.has(state)) {
         try {
           await existed.remove()
         } catch {
@@ -61,15 +118,17 @@ export async function enqueueAiSummary(req: FastifyRequest, reply: FastifyReply)
         continue
       }
     }
+    const jobOptions = sanitizedOptions ? { ...sanitizedOptions } : undefined
     await req.server.queues.aiSummary.add(
       AI_SUMMARY_JOB,
-      { projectId: id, options: body.options },
+      { projectId: id, options: jobOptions },
       { jobId }
     )
     enqueued += 1
   }
   ctx.log.info({ enqueued }, '[admin] enqueue ai summary')
-  return reply.send({ message: 'ok', enqueued })
+  const queueRemaining = await getAiSummaryQueueRemaining(req)
+  return reply.send({ message: 'ok', enqueued, queueRemaining })
 }
 
 export async function enqueueAiSweep(req: FastifyRequest, reply: FastifyReply) {
@@ -80,13 +139,72 @@ export async function enqueueAiSweep(req: FastifyRequest, reply: FastifyReply) {
     force?: boolean
     staleDaysOverride?: number
   }
-  const jobId = 'ai-sweep:manual'
-  const existed = await req.server.queues.aiSummary.getJob(jobId)
-  if (!existed) {
-    await req.server.queues.aiSummary.add(AI_SWEEP_JOB, body ?? {}, { jobId })
+  const jobId = 'ai-sweep:manual:default'
+  const existingSweepJob = await req.server.queues.aiSummary.getJob(jobId)
+  if (existingSweepJob) {
+    const state = await existingSweepJob.getState().catch(() => 'unknown')
+    if (RUNNING_JOB_STATES.has(state)) {
+      const queueRemaining = await getAiSummaryQueueRemaining(req)
+      return reply.send({ message: 'ok', enqueued: 0, total: 0, queueRemaining })
+    }
+    try {
+      await existingSweepJob.remove()
+    } catch {
+      // ignore remove error; we'll still try to enqueue a fresh sweep job
+    }
   }
-  // 结果由 worker 返回统计；这里简单确认入列
-  return reply.send({ message: 'ok', enqueued: 1, total: 0 })
+  let total = 0
+  let enqueued = 0
+  const defaultLimit = req.server.config.aiSummaryLimit ?? 100
+  const limit = Math.max(1, Math.min(800, body?.limit ?? defaultLimit))
+  const useForce = !!body?.force
+  const staleDaysCfg = req.server.config.aiSummaryStaleDays ?? 365
+  const staleDays = Math.max(0, body?.staleDaysOverride ?? staleDaysCfg)
+  const staleBefore = new Date(Date.now() - staleDays * 24 * 3600 * 1000)
+
+  const where = useForce
+    ? { archived: false }
+    : {
+        archived: false,
+        OR: [{ aiSummarizedAt: null }, { aiSummarizedAt: { lt: staleBefore } }],
+      }
+  const candidates = await req.server.prisma.project.findMany({
+    where,
+    select: { id: true },
+    orderBy: { updatedAt: 'desc' },
+    take: limit,
+  })
+  total = candidates.length
+
+  const langSegment = sanitizeJobSegment(body?.lang, 'any')
+  const modelSegment = sanitizeJobSegment(body?.model)
+
+  for (const candidate of candidates) {
+    const summaryJobId = `ai-summary:${candidate.id}:${langSegment}-${modelSegment}`
+    const existingSummaryJob = await req.server.queues.aiSummary.getJob(summaryJobId)
+    if (existingSummaryJob) {
+      const state = await existingSummaryJob.getState().catch(() => 'unknown')
+      if (!RUNNING_JOB_STATES.has(state)) {
+        enqueued += 1
+      }
+    } else {
+      enqueued += 1
+    }
+  }
+
+  await req.server.queues.aiSummary.add(
+    AI_SWEEP_JOB,
+    {
+      limit,
+      lang: body?.lang,
+      model: body?.model,
+      force: useForce,
+      staleDaysOverride: body?.staleDaysOverride,
+    },
+    { jobId }
+  )
+  const queueRemaining = await getAiSummaryQueueRemaining(req)
+  return reply.send({ message: 'ok', enqueued, total, queueRemaining })
 }
 
 // List AI batches from SyncState (source='ai:summary', key startsWith 'batch:')

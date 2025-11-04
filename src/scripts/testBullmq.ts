@@ -143,10 +143,11 @@ async function main() {
 
     // 失败用例
     try {
+      const failJobId = `${manualJobId}-fail`
       const failJob = await app.queues.syncStars.add(
         'sync-stars-invalid',
         { options: opts, actor: 'manual', note: 'force a fail for mail test' },
-        { removeOnComplete: true, removeOnFail: true, jobId: `${manualJobId}:fail` }
+        { removeOnComplete: true, removeOnFail: true, jobId: failJobId }
       )
       try {
         await failJob.waitUntilFinished(syncEvents, 10_000)
@@ -197,7 +198,8 @@ async function main() {
   // 入队 AI 全量扫描（根据配置的 staleDays 判定；用于测试批量 AI 摘要）
   if (runAi) {
     try {
-      const jobId = `ai-sweep:manual:test:${Date.now()}`
+      const jobSuffix = `test-${Date.now()}`
+      const jobId = `ai-sweep:manual:${jobSuffix}`
       const sweep = await app.queues.aiSummary.add(
         AI_SWEEP_JOB,
         {

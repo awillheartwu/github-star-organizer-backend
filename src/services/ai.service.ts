@@ -94,7 +94,7 @@ export async function summarizeProject(
   const longTextSanitized =
     typeof parsed.long === 'string' ? sanitizeMultilineText(parsed.long).trim() : ''
   const shortText = shortTextSanitized ? shortTextSanitized : undefined
-  const longText = longTextSanitized ? longTextSanitized : undefined
+  const longText = longTextSanitized ? escapeAiSummaryLongText(longTextSanitized) : undefined
   const tagNames: string[] = Array.isArray(parsed.tags)
     ? parsed.tags.map((t) => String(t)).filter(Boolean)
     : []
@@ -302,6 +302,12 @@ function extractFirstJsonObject(s: string): string | null {
     }
   }
   return null
+}
+
+/** @internal 对长摘要进行存储级转义（保留可逆信息） */
+function escapeAiSummaryLongText(text: string): string {
+  const escapedQuotes = text.replace(/"/g, '\\"')
+  return escapedQuotes.replace(/\n/g, '\\n')
 }
 
 /** @internal 写入摘要历史 */

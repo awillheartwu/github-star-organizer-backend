@@ -104,6 +104,7 @@ pnpm seed:admin
 | `GITHUB_USERNAME` | 要同步的 GitHub 用户名 |
 | `SYNC_STARS_CRON` | Stars 同步 cron（增量） |
 | `AI_SUMMARY_CRON` | AI 扫描批处理 cron |
+| `AI_SUMMARY_LIMIT` | AI 批量扫描默认数量（1-800） |
 | `BULL_ROLE` | `both` / `worker` / `producer` |
 | `BULL_UI_ENABLED` | 启用队列 UI |
 | `BULL_UI_READONLY` | UI 只读防误操作 |
@@ -245,4 +246,3 @@ MIT © 2025-present
 * Prisma: https://www.prisma.io
 * Octokit: https://github.com/octokit/octokit.js
 * Nodemailer: https://nodemailer.com
-
