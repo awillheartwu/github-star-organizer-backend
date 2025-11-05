@@ -9,7 +9,12 @@ export const TagQuerySchema = Type.Object({
   archived: Type.Optional(Type.Boolean()),
   keyword: Type.Optional(Type.String()),
   orderBy: Type.Optional(
-    Type.Union([Type.Literal('createdAt'), Type.Literal('updatedAt'), Type.Literal('name')])
+    Type.Union([
+      Type.Literal('createdAt'),
+      Type.Literal('updatedAt'),
+      Type.Literal('name'),
+      Type.Literal('projectCount'),
+    ])
   ),
   orderDirection: Type.Optional(Type.Union([Type.Literal('asc'), Type.Literal('desc')])),
 })
@@ -44,9 +49,16 @@ export const TagCreateResponseSchema = Type.Object({
 })
 
 // 标签列表响应：包含分页信息和标签数组
+const TagListItemSchema = Type.Intersect([
+  TagPublic,
+  Type.Object({
+    projectCount: Type.Number(),
+  }),
+])
+
 export const TagListResponseSchema = Type.Object({
   message: Type.String(),
-  data: Type.Array(TagPublic),
+  data: Type.Array(TagListItemSchema),
   page: Type.Number(),
   pageSize: Type.Number(),
   total: Type.Number(),

@@ -95,7 +95,8 @@ export async function markSuccess(
   if (info.etag !== undefined) payload.etag = sanitizeEtag(info.etag)
   if (info.stats) {
     const json = JSON.stringify(info.stats)
-    payload.statsJson = json.length > 4096 ? json.slice(0, 4096) : json
+    const escaped = escapeStatsJson(json)
+    payload.statsJson = escaped.length > 4096 ? escaped.slice(0, 4096) : escaped
   }
 
   return ctx.prisma.syncState.update({ where: { source_key: { source, key } }, data: payload })
@@ -137,4 +138,14 @@ export function normalizeErrorMessage(err: unknown, maxLen = 500) {
     msg = String(err)
   }
   return msg.length > maxLen ? msg.slice(0, maxLen) : msg
+}
+
+/**
+ * 转义 JSON 字符串中的双引号，便于存储。
+ * @param value 原始 JSON 字符串
+ * @returns 转义后的字符串
+ **/
+function escapeStatsJson(value: string) {
+  const withoutBackslash = value.replace(/\\/g, '')
+  return withoutBackslash.replace(/"/g, '\\"')
 }

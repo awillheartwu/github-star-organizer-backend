@@ -149,22 +149,28 @@ function normalizeStatsJson(
     }
   }
   try {
-    const parsed = JSON.parse(raw) as SyncStats
+    const parsed = JSON.parse(removeAllBackslashes(raw)) as SyncStats
+    const escaped = sanitizeJsonString(JSON.stringify(parsed))
     return {
-      statsJson: escapeDoubleQuotes(JSON.stringify(parsed)),
+      statsJson: escaped,
       latestStats: parsed,
     }
   } catch (error) {
     ctx.log.warn({ err: error }, '[admin] failed to parse statsJson, returning raw value')
     return {
-      statsJson: escapeDoubleQuotes(raw),
+      statsJson: sanitizeJsonString(raw),
       latestStats: undefined,
     }
   }
 }
 
-function escapeDoubleQuotes(value: string) {
-  return value.replace(/"/g, '\\"')
+function removeAllBackslashes(value: string) {
+  return value.replace(/\\/g, '')
+}
+
+function sanitizeJsonString(value: string) {
+  const withoutBackslash = removeAllBackslashes(value)
+  return withoutBackslash.replace(/"/g, '\\"')
 }
 
 // —— 归档只读列表 —— //

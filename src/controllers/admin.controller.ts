@@ -1,4 +1,5 @@
 // src/controllers/admin.controller.ts
+import { Prisma } from '@prisma/client'
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { getCtx } from '../helpers/context.helper'
 import * as userService from '../services/user.service'
@@ -213,10 +214,23 @@ export async function listAiBatches(req: FastifyRequest, reply: FastifyReply) {
   const { offset, limit, page, pageSize } = getPagination(
     req.query as { page?: number; pageSize?: number }
   )
+  const { sortField: rawSortField, sortOrder: rawSortOrder } = req.query as {
+    sortField?: string
+    sortOrder?: string
+  }
+  const sortOrder: Prisma.SortOrder = rawSortOrder === 'asc' ? 'asc' : 'desc'
+  const allowedFields = new Set(['updatedAt', 'lastRunAt', 'lastSuccessAt'])
+  const sortField = allowedFields.has(rawSortField ?? '') ? (rawSortField as string) : 'lastRunAt'
+  const orderBy: Prisma.SyncStateOrderByWithRelationInput[] =
+    sortField === 'updatedAt'
+      ? [{ updatedAt: sortOrder }]
+      : sortField === 'lastSuccessAt'
+        ? [{ lastSuccessAt: sortOrder }, { updatedAt: sortOrder }]
+        : [{ lastRunAt: sortOrder }, { lastSuccessAt: sortOrder }, { updatedAt: sortOrder }]
   const [rows, total] = await Promise.all([
     ctx.prisma.syncState.findMany({
       where: { source: 'ai:summary', key: { startsWith: 'batch:' } },
-      orderBy: { updatedAt: 'desc' },
+      orderBy,
       skip: offset,
       take: limit,
       select: { key: true, lastRunAt: true, lastSuccessAt: true, statsJson: true, updatedAt: true },

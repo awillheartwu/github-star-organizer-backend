@@ -53,7 +53,7 @@ export async function getTagsService(ctx: Ctx, query: TagQuery) {
   ctx.log.debug({ conditions, order, offset, limit }, 'tag.list query built')
 
   // 查询
-  const [data, total] = await Promise.all([
+  const [rows, total] = await Promise.all([
     ctx.prisma.tag.findMany({
       skip: offset,
       take: limit,
@@ -67,10 +67,15 @@ export async function getTagsService(ctx: Ctx, query: TagQuery) {
         createdAt: true,
         updatedAt: true,
         deletedAt: true,
+        _count: { select: { projects: true } },
       },
     }),
     ctx.prisma.tag.count({ where: conditions }),
   ])
+  const data = rows.map(({ _count, ...rest }) => ({
+    ...rest,
+    projectCount: _count?.projects ?? 0,
+  }))
   ctx.log.debug({ data, total }, 'tag.list query result')
   return { data, total }
 }

@@ -17,6 +17,7 @@
     "postinstall": "prisma generate && node ./src/scripts/nullPatch.mjs",
     "update:packages": "npx npm-check-updates -u",
     "seed:admin": "dotenv -e .env.development -- tsx src/scripts/seedAdmin.ts",
+    "sanitize:stats": "dotenv -e .env.development -- tsx scripts/sanitize-stats-json.ts",
     "db:gen": "prisma generate && node ./src/scripts/nullPatch.mjs",
     "db:studio": "prisma studio",
     "migrate": "dotenv -e .env.development -- npx prisma migrate dev",
