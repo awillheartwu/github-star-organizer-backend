@@ -11,7 +11,7 @@ services:
       - "3030:3000"
     restart: unless-stopped
     volumes:
-      - /volume2/docker/gsor/logs:/app/logs
+      - gsor-logs:/app/logs
     environment:
       NODE_ENV: production
     command: ["node", "dist/main.js"]
@@ -22,3 +22,6 @@ services:
 networks:
   core-net:
     external: true
+
+volumes:
+  gsor-logs:
