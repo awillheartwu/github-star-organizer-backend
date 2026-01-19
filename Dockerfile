@@ -20,10 +20,12 @@ RUN pnpm exec prisma generate
 RUN pnpm build
 
 FROM base AS prod-deps
+ENV PRISMA_SKIP_POSTINSTALL_GENERATE=true
 COPY package.json pnpm-lock.yaml ./
 COPY prisma ./prisma
-COPY --from=deps /app/node_modules ./node_modules
-RUN pnpm exec prisma generate && pnpm prune --prod
+RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store/v3 \
+    pnpm install --prod --frozen-lockfile --ignore-scripts
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
 FROM node:22-slim AS runner
 WORKDIR /app
