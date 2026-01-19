@@ -149,11 +149,13 @@ function normalizeStatsJson(
     }
   }
   try {
-    const parsed = JSON.parse(removeAllBackslashes(raw)) as SyncStats
-    const escaped = sanitizeJsonString(JSON.stringify(parsed))
+    const cleaned = removeAllBackslashes(raw)
+    const parsed = JSON.parse(cleaned) as Partial<SyncStats>
+    const normalizedJson = JSON.stringify(parsed)
+    const normalizedStats = normalizeSyncStats(parsed)
     return {
-      statsJson: escaped,
-      latestStats: parsed,
+      statsJson: sanitizeJsonString(normalizedJson),
+      latestStats: normalizedStats,
     }
   } catch (error) {
     ctx.log.warn({ err: error }, '[admin] failed to parse statsJson, returning raw value')
@@ -171,6 +173,48 @@ function removeAllBackslashes(value: string) {
 function sanitizeJsonString(value: string) {
   const withoutBackslash = removeAllBackslashes(value)
   return withoutBackslash.replace(/"/g, '\\"')
+}
+
+function normalizeSyncStats(value: Partial<SyncStats>): SyncStats | undefined {
+  const coerceNumber = (input: unknown): number | undefined => {
+    if (typeof input === 'number' && Number.isFinite(input)) return input
+    if (typeof input === 'string') {
+      const trimmed = input.trim()
+      if (!trimmed) return undefined
+      const num = Number(trimmed)
+      return Number.isFinite(num) ? num : undefined
+    }
+    return undefined
+  }
+  const scanned = coerceNumber(value.scanned)
+  const created = coerceNumber(value.created)
+  const updated = coerceNumber(value.updated)
+  const unchanged = coerceNumber(value.unchanged)
+  const softDeleted = coerceNumber(value.softDeleted)
+  const pages = coerceNumber(value.pages)
+  if (
+    scanned === undefined ||
+    created === undefined ||
+    updated === undefined ||
+    unchanged === undefined ||
+    softDeleted === undefined ||
+    pages === undefined
+  ) {
+    return undefined
+  }
+  return {
+    scanned,
+    created,
+    updated,
+    unchanged,
+    softDeleted,
+    pages,
+    rateLimitRemaining: coerceNumber(value.rateLimitRemaining),
+    errors: coerceNumber(value.errors),
+    startedAt: value.startedAt,
+    finishedAt: value.finishedAt,
+    durationMs: coerceNumber(value.durationMs),
+  }
 }
 
 // —— 归档只读列表 —— //

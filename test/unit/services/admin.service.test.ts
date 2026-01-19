@@ -165,7 +165,7 @@ describe('AdminService', () => {
           lastErrorAt: new Date('2023-01-01T09:30:00Z'),
           lastError: 'Previous error message',
           statsJson:
-            '{"scanned ": "100", "created ": "50", "durationMs ": "1200", "startedAt": "2023-01-01 T10: 00: 00Z", "finishedAt": "2023-01-01 T10: 05: 00Z"}',
+            '{\\"scanned\\":100,\\"created\\":50,\\"updated\\":0,\\"unchanged\\":50,\\"softDeleted\\":0,\\"pages\\":1,\\"durationMs\\":1200,\\"startedAt\\":\\"2023-01-01T10:00:00.000Z\\",\\"finishedAt\\":\\"2023-01-01T10:05:00.000Z\\"}',
         },
       })
     })
@@ -183,10 +183,14 @@ describe('AdminService', () => {
         lastErrorAt: '2023-01-01T09:30:00.000Z',
         lastError: 'Previous error message',
         statsJson:
-          '{"scanned":100,"created":50,"durationMs":1200,"startedAt":"2023-01-01T10:00:00.000Z","finishedAt":"2023-01-01T10:05:00.000Z"}',
-        stats: {
+          '{\\"scanned\\":100,\\"created\\":50,\\"updated\\":0,\\"unchanged\\":50,\\"softDeleted\\":0,\\"pages\\":1,\\"durationMs\\":1200,\\"startedAt\\":\\"2023-01-01T10:00:00.000Z\\",\\"finishedAt\\":\\"2023-01-01T10:05:00.000Z\\"}',
+        latestStats: {
           scanned: 100,
           created: 50,
+          updated: 0,
+          unchanged: 50,
+          softDeleted: 0,
+          pages: 1,
           durationMs: 1200,
           startedAt: '2023-01-01T10:00:00.000Z',
           finishedAt: '2023-01-01T10:05:00.000Z',

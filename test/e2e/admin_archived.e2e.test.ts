@@ -92,7 +92,8 @@ describe('E2E Admin Archived Projects & Sync State', () => {
         etag: 'tag',
         lastRunAt: new Date('2024-01-01T00:00:00Z'),
         lastSuccessAt: new Date('2024-01-01T00:10:00Z'),
-        statsJson: '{"pages":1}',
+        statsJson:
+          '{\\"scanned\\":1,\\"created\\":1,\\"updated\\":0,\\"unchanged\\":0,\\"softDeleted\\":0,\\"pages\\":1}',
       },
     })
     const res = await app.inject({
