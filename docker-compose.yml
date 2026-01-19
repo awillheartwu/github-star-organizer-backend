@@ -14,6 +14,7 @@ services:
       - gsor-logs:/app/logs
     environment:
       NODE_ENV: production
+      NODE_OPTIONS: --experimental-specifier-resolution=node
     command: ["node", "dist/main.js"]
     init: true
     networks:

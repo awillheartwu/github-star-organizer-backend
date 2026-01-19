@@ -176,7 +176,11 @@ jobs:
           docker version
 
       - name: Build Docker image
-        run: docker build -t gsor-backend:latest -f Dockerfile .
+        run: |
+          docker build \
+            -t gsor-backend:latest \
+            -t gsor-backend:${{ github.sha }} \
+            -f Dockerfile .
 
       - name: Write .env.production
         if: github.event_name == 'push'
@@ -187,4 +191,9 @@ jobs:
 
       - name: Deploy (docker compose up)
         if: github.event_name == 'push'
-        run: docker compose -f docker-compose.yml up -d --no-build
+        run: docker compose -f docker-compose.yml up -d --no-build --remove-orphans
+
+      - name: Cleanup old images
+        if: github.event_name == 'push'
+        run: |
+          docker image prune -f --filter "label=org.opencontainers.image.title=gsor-backend"

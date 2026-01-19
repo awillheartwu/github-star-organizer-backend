@@ -23,6 +23,8 @@ RUN npm_config_ignore_scripts=true pnpm prune --prod
 
 FROM node:22-slim AS runner
 WORKDIR /app
+LABEL org.opencontainers.image.title="gsor-backend"
+LABEL org.opencontainers.image.source="github-star-organizer-backend"
 ENV NODE_ENV=production
 ENV PNPM_HOME=/root/.local/share/pnpm
 ENV PATH=$PNPM_HOME:$PATH
