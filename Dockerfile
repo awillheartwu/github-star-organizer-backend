@@ -18,14 +18,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN pnpm exec prisma generate
 RUN pnpm build
-
-FROM base AS prod-deps
-ENV PRISMA_SKIP_POSTINSTALL_GENERATE=true
-COPY package.json pnpm-lock.yaml ./
-COPY prisma ./prisma
-RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store/v3 \
-    pnpm install --prod --frozen-lockfile --ignore-scripts
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+RUN pnpm prune --prod
 
 FROM node:22-slim AS runner
 WORKDIR /app
@@ -36,7 +29,7 @@ RUN apt-get update \
   && apt-get install -y --no-install-recommends ca-certificates openssl \
   && rm -rf /var/lib/apt/lists/*
 RUN corepack enable
-COPY --from=prod-deps /app/node_modules ./node_modules
+COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY prisma ./prisma
 COPY package.json pnpm-lock.yaml ./
