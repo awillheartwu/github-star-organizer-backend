@@ -14,11 +14,12 @@ RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store/v3 \
     pnpm install --frozen-lockfile --ignore-scripts
 
 FROM base AS builder
+ENV PRISMA_SKIP_POSTINSTALL_GENERATE=true
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN pnpm exec prisma generate
 RUN pnpm build
-RUN pnpm prune --prod
+RUN npm_config_ignore_scripts=true pnpm prune --prod
 
 FROM node:22-slim AS runner
 WORKDIR /app
