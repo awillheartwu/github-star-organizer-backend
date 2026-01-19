@@ -178,6 +178,13 @@ jobs:
       - name: Build Docker image
         run: docker build -t gsor-backend:latest -f Dockerfile .
 
+      - name: Write .env.production
+        if: github.event_name == 'push'
+        run: |
+          cat << 'EOF' > .env.production
+          ${{ secrets.GSOR_ENV_PRODUCTION }}
+          EOF
+
       - name: Deploy (docker compose up)
         if: github.event_name == 'push'
         run: docker compose -f docker-compose.yml up -d --no-build
