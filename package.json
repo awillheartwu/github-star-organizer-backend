@@ -10,7 +10,7 @@
     "test:coverage:html": "jest --config test/jest.config.cjs --coverage --runInBand --passWithNoTests --forceExit && open coverage/index.html",
     "test:watch": "jest --config test/jest.config.cjs --runInBand --passWithNoTests --watch",
     "dev": "dotenv -e .env.development -- tsx watch ./src/main.ts | pino-pretty --colorize",
-    "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json --resolve-full-paths --add-extension",
+    "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json --resolve-full-paths --resolve-full-extension .js",
     "start": "node dist/main.js",
     "start:prod:local": "dotenv -e .env.production -- node dist/main.js",
     "test:bull": "dotenv -e .env.development -- tsx src/scripts/testBullmq.ts",
