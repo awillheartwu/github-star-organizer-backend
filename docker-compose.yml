@@ -2,6 +2,7 @@ version: '3.9'
 
 services:
   api:
+    image: gsor-backend:latest
     build:
       context: .
     env_file:
@@ -15,3 +16,9 @@ services:
       NODE_ENV: production
     command: ["node", "dist/main.js"]
     init: true
+    networks:
+      - core-net
+
+networks:
+  core-net:
+    external: true
