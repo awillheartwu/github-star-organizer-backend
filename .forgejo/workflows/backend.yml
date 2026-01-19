@@ -38,6 +38,7 @@ jobs:
       # 不需要 docker_host 字段了
     env:
       NODE_ENV: test
+      DOCKER_API_VERSION: '1.43'
       DATABASE_URL: ${{ secrets.GSOR_DATABASE_URL }}
       TEST_DATABASE_URL: ${{ secrets.GSOR_TEST_DATABASE_URL }}
       REDIS_HOST: ${{ secrets.GSOR_REDIS_HOST }}
@@ -171,6 +172,7 @@ jobs:
       - name: Sanity check docker
         run: |
           echo "DOCKER_HOST=$DOCKER_HOST"
+          echo "DOCKER_API_VERSION=$DOCKER_API_VERSION"
           docker version
 
       - name: Build Docker image
