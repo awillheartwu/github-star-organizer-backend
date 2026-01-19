@@ -15,7 +15,7 @@ services:
     environment:
       NODE_ENV: production
       NODE_OPTIONS: --experimental-specifier-resolution=node
-    command: ["node", "--experimental-specifier-resolution=node", "dist/main.js"]
+    command: ["node", "dist/main.js"]
     init: true
     networks:
       - core-net

@@ -38,4 +38,4 @@ COPY prisma ./prisma
 COPY package.json pnpm-lock.yaml ./
 COPY src/scripts/nullPatch.mjs ./src/scripts/nullPatch.mjs
 EXPOSE 3000
-CMD ["node", "--experimental-specifier-resolution=node", "dist/main.js"]
+CMD ["node", "dist/main.js"]

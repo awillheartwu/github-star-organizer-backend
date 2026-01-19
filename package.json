@@ -10,7 +10,7 @@
     "test:coverage:html": "jest --config test/jest.config.cjs --coverage --runInBand --passWithNoTests --forceExit && open coverage/index.html",
     "test:watch": "jest --config test/jest.config.cjs --runInBand --passWithNoTests --watch",
     "dev": "dotenv -e .env.development -- tsx watch ./src/main.ts | pino-pretty --colorize",
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json --resolve-full-paths --add-extension",
     "start": "node dist/main.js",
     "start:prod:local": "dotenv -e .env.production -- node dist/main.js",
     "test:bull": "dotenv -e .env.development -- tsx src/scripts/testBullmq.ts",
@@ -110,6 +110,7 @@
     "ts-node-dev": "^2.0.0",
     "tsx": "^4.20.3",
     "typedoc": "^0.28.12",
+    "tsc-alias": "^1.8.8",
     "typescript": "^5.9.2"
   },
   "lint-staged": {

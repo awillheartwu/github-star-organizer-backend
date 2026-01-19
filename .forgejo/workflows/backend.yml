@@ -193,7 +193,11 @@ jobs:
         if: github.event_name == 'push'
         run: docker compose -f docker-compose.yml up -d --no-build --remove-orphans
 
-      - name: Cleanup old images
+      - name: Cleanup old images (keep latest 3 builds)
         if: github.event_name == 'push'
         run: |
-          docker image prune -f --filter "label=org.opencontainers.image.title=gsor-backend"
+          docker images --format '{{.Repository}}:{{.Tag}} {{.CreatedAt}}' \
+            | awk '$1 ~ /^gsor-backend:/ && $1 !~ /:latest$/ {print $0}' \
+            | sort -rk2 \
+            | awk 'NR>3 {print $1}' \
+            | xargs -r docker rmi
