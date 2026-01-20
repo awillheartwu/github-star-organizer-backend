@@ -87,10 +87,9 @@ try {
   console.error(`env validation: failed - ${message}`)
   if (errors.length) {
     // eslint-disable-next-line no-console
-    console.error(
-      'env validation details:',
-      errors.map((e) => `${e.path} ${e.message}`).join('; ')
-    )
+    const details = errors.map((e) => `${e.path} ${e.message}`).join('; ')
+    // eslint-disable-next-line no-console
+    console.error('env validation details:', details)
   }
   process.exit(1)
 }
