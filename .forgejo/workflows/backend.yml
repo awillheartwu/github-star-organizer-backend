@@ -193,9 +193,21 @@ jobs:
         if: github.event_name == 'push'
         run: pnpm tsx src/scripts/validate-env.ts
 
+      - name: Validate env inside image
+        if: github.event_name == 'push'
+        run: |
+          docker run --rm \
+            --env-file .env.production \
+            gsor-backend:latest \
+            node dist/scripts/validate-env.js
+
       - name: Deploy (docker compose up)
         if: github.event_name == 'push'
-        run: docker compose -f docker-compose.yml up -d --no-build --remove-orphans
+        run: |
+          docker compose \
+            --project-directory "$PWD" \
+            -f docker-compose.yml \
+            up -d --no-build --remove-orphans
 
       - name: Cleanup old images (keep latest 3 builds)
         if: github.event_name == 'push'

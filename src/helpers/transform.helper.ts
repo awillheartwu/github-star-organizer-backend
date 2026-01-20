@@ -56,6 +56,11 @@ export function toProjectDto(p: ProjectWithRelations): ProjectDto {
     description: pt.tag.description ?? null,
   }))
   const urls = p.videoLinks.map((v) => v.url)
+  let description: string | null = p.description ?? null
+  if (typeof p.description === 'string') {
+    const cleaned = sanitizeMultilineText(p.description).trim()
+    description = cleaned || null
+  }
   let summaryShort: string | null = p.summaryShort ?? null
   if (typeof p.summaryShort === 'string') {
     const cleaned = sanitizeMultilineText(p.summaryShort).trim()
@@ -69,6 +74,7 @@ export function toProjectDto(p: ProjectWithRelations): ProjectDto {
   // 用展开保留 Project 的所有标量字段，然后覆盖 relations 字段
   return {
     ...p,
+    description,
     summaryShort,
     summaryLong,
     tags: flatTags,
