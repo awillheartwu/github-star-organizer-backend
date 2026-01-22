@@ -13,6 +13,7 @@ try {
   const raw = {
     NODE_ENV: process.env.NODE_ENV,
     PORT: process.env.PORT,
+    HOST: process.env.HOST,
     FASTIFY_CLOSE_GRACE_DELAY: process.env.FASTIFY_CLOSE_GRACE_DELAY,
     LOG_LEVEL: process.env.LOG_LEVEL,
     DATABASE_URL: process.env.DATABASE_URL,

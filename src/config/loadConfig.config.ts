@@ -30,6 +30,7 @@ export const EnvSchema = Type.Object(
       }
     ),
     PORT: Type.Number({ default: 3000 }),
+    HOST: Type.String({ default: '0.0.0.0' }),
     FASTIFY_CLOSE_GRACE_DELAY: Type.String({ default: '500' }), // ms
     LOG_LEVEL: Type.Union(
       [
@@ -204,6 +205,7 @@ export const AppConfigSchema = Type.Object(
       Type.Literal('test'),
     ]),
     port: Type.Number(),
+    host: Type.String(),
     fastifyCloseGraceDelay: Type.String({ default: '500' }), // ms
     logLevel: Type.Union([
       Type.Literal('fatal'),
@@ -314,6 +316,7 @@ export function loadConfig(): AppConfig {
   const raw = {
     NODE_ENV: process.env.NODE_ENV,
     PORT: process.env.PORT,
+    HOST: process.env.HOST,
     FASTIFY_CLOSE_GRACE_DELAY: process.env.FASTIFY_CLOSE_GRACE_DELAY,
     LOG_LEVEL: process.env.LOG_LEVEL,
     DATABASE_URL: process.env.DATABASE_URL,
@@ -391,6 +394,7 @@ export function loadConfig(): AppConfig {
   const cfg: AppConfig = {
     env: coerced.NODE_ENV,
     port: coerced.PORT,
+    host: coerced.HOST,
     fastifyCloseGraceDelay: coerced.FASTIFY_CLOSE_GRACE_DELAY,
     logLevel: coerced.LOG_LEVEL,
     databaseUrl: coerced.DATABASE_URL,

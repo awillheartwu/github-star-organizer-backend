@@ -104,7 +104,7 @@ async function bootstrap() {
   })
 
   // 启动服务
-  app.listen({ port: config.port! }, (err) => {
+  app.listen({ port: config.port!, host: config.host }, (err) => {
     if (err) {
       app.log.error(err)
       process.exit(1)
