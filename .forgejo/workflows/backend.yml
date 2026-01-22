@@ -38,6 +38,7 @@ jobs:
       # 不需要 docker_host 字段了
     env:
       NODE_ENV: test
+      HOST: 127.0.0.1
       DOCKER_API_VERSION: '1.43'
       DATABASE_URL: ${{ secrets.GSOR_DATABASE_URL }}
       TEST_DATABASE_URL: ${{ secrets.GSOR_TEST_DATABASE_URL }}
