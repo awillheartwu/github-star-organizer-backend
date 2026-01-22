@@ -204,6 +204,27 @@ jobs:
             gsor-backend:latest \
             node dist/scripts/validate-env.js
 
+      - name: Detect prisma migrations changes
+        if: github.event_name == 'push'
+        id: migrations
+        shell: bash
+        run: |
+          git fetch --no-tags --prune --depth=50 origin "${{ github.ref }}" || true
+          CHANGED=$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" | grep -E '^prisma/migrations/' || true)
+          if [[ -n "${CHANGED}" ]]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Apply database migrations
+        if: github.event_name == 'push' && steps.migrations.outputs.changed == 'true'
+        run: |
+          docker run --rm \
+            --env-file .env.production \
+            gsor-backend:latest \
+            npx prisma migrate deploy
+
       - name: Seed admin account
         if: github.event_name == 'push'
         run: pnpm seed:admin
