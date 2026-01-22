@@ -49,6 +49,8 @@ jobs:
       AI_API_KEY: ${{ secrets.GSOR_AI_API_KEY }}
       JWT_ACCESS_SECRET: ${{ secrets.GSOR_JWT_ACCESS_SECRET }}
       JWT_REFRESH_SECRET: ${{ secrets.GSOR_JWT_REFRESH_SECRET }}
+      SEED_ADMIN_EMAIL: ${{ secrets.GSOR_SEED_ADMIN_EMAIL }}
+      SEED_ADMIN_PASSWORD: ${{ secrets.GSOR_SEED_ADMIN_PASSWORD }}
 
       # 非敏感变量，直接内联
       PORT: 3999
@@ -201,6 +203,10 @@ jobs:
             --env-file .env.production \
             gsor-backend:latest \
             node dist/scripts/validate-env.js
+
+      - name: Seed admin account
+        if: github.event_name == 'push'
+        run: pnpm seed:admin
 
       - name: Deploy (docker compose up)
         if: github.event_name == 'push'
