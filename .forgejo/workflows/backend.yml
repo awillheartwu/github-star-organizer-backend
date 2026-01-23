@@ -206,12 +206,8 @@ jobs:
 
       - name: Apply database migrations (temporary)
         if: github.event_name == 'push'
-        shell: bash
         run: |
-          set -a
-          source .env.production
-          set +a
-          pnpm prisma migrate deploy
+          pnpm -s dotenv -e .env.production -- pnpm prisma migrate deploy
 
       - name: Seed admin account
         if: github.event_name == 'push'
