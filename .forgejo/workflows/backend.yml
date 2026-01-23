@@ -211,7 +211,7 @@ jobs:
 
       - name: Seed admin account
         if: github.event_name == 'push'
-        run: pnpm seed:admin
+        run: pnpm -s dotenv -e .env.production -- tsx src/scripts/seedAdmin.ts
 
       - name: Deploy (docker compose up)
         if: github.event_name == 'push'
