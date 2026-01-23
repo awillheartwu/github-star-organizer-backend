@@ -207,11 +207,11 @@ jobs:
       - name: Apply database migrations (temporary)
         if: github.event_name == 'push'
         run: |
-          pnpm -s dotenv -e .env.production -- pnpm prisma migrate deploy
+          pnpm -s dotenv -e .env.production --override -- pnpm prisma migrate deploy
 
       - name: Seed admin account
         if: github.event_name == 'push'
-        run: pnpm -s dotenv -e .env.production -- tsx src/scripts/seedAdmin.ts
+        run: pnpm -s dotenv -e .env.production --override -- tsx src/scripts/seedAdmin.ts
 
       - name: Deploy (docker compose up)
         if: github.event_name == 'push'
