@@ -305,6 +305,41 @@ model SyncState {
   @@index([updatedAt])
 }
 
+/// 同步/任务运行历史（每次运行一条）
+model SyncStateHistory {
+  id String @id @default(uuid())
+
+  /// 同步来源：例如 'github:stars'
+  source String
+
+  /// 任务键：例如 'user:YOUR_GITHUB_USERNAME'
+  key String
+
+  /// 用于增量同步的游标（例如 GitHub starred_at 的 ISO 字符串）
+  cursor String?
+
+  /// HTTP ETag（If-None-Match/304），可选加速
+  etag String?
+
+  /// 本次运行时间/成功时间/失败时间
+  lastRunAt     DateTime?
+  lastSuccessAt DateTime?
+  lastErrorAt   DateTime?
+
+  /// 本次错误信息（简要）
+  lastError String?
+
+  /// 本次统计信息（JSON 串，记录 created/updated 等）
+  statsJson String?
+
+  createdAt DateTime @default(now())
+
+  @@index([source])
+  @@index([key])
+  @@index([createdAt])
+  @@index([source, key, createdAt])
+}
+
 /// 归档的 Project 快照（允许同一 githubId 多次归档）
 model ArchivedProject {
   id                String         @id @default(uuid())

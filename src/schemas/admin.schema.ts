@@ -140,14 +140,27 @@ export const AiSweepResultSchema = Type.Object({
 export const AiBatchListQuerySchema = Type.Object({
   page: Type.Optional(Type.Integer({ minimum: 1 })),
   pageSize: Type.Optional(Type.Integer({ minimum: 1, maximum: 100 })),
+  sortField: Type.Optional(
+    Type.Union([
+      Type.Literal('createdAt'),
+      Type.Literal('lastRunAt'),
+      Type.Literal('lastSuccessAt'),
+      Type.Literal('lastErrorAt'),
+    ])
+  ),
+  sortOrder: Type.Optional(Type.Union([Type.Literal('asc'), Type.Literal('desc')])),
 })
 
 export const AiBatchItemSchema = Type.Object({
+  id: Type.String(),
+  source: Type.String(),
   key: Type.String(),
   lastRunAt: Type.Optional(Type.String()),
   lastSuccessAt: Type.Optional(Type.String()),
+  lastErrorAt: Type.Optional(Type.String()),
+  lastError: Type.Optional(Type.String()),
   statsJson: Type.Optional(Type.String()),
-  updatedAt: Type.String(),
+  createdAt: Type.String(),
 })
 
 export const AiBatchListResponseSchema = Type.Object({

@@ -9,6 +9,7 @@ export * from "./VideoLink";
 export * from "./User";
 export * from "./RefreshToken";
 export * from "./SyncState";
+export * from "./SyncStateHistory";
 export * from "./ArchivedProject";
 export * from "./__nullable__";
 export * from "./__transformDate__";

@@ -85,9 +85,10 @@ export async function markSuccess(
     finishedAt?: Date
   }
 ) {
+  const finishedAt = info.finishedAt ?? new Date()
   const payload: Record<string, unknown> = {
-    lastRunAt: info.finishedAt ?? new Date(),
-    lastSuccessAt: info.finishedAt ?? new Date(),
+    lastRunAt: finishedAt,
+    lastSuccessAt: finishedAt,
     lastError: null,
     lastErrorAt: null,
   }
@@ -99,7 +100,29 @@ export async function markSuccess(
     payload.statsJson = escaped.length > 4096 ? escaped.slice(0, 4096) : escaped
   }
 
-  return ctx.prisma.syncState.update({ where: { source_key: { source, key } }, data: payload })
+  const updated = await ctx.prisma.syncState.update({
+    where: { source_key: { source, key } },
+    data: payload,
+  })
+
+  // 记录历史（每次运行一条）
+  try {
+    await ctx.prisma.syncStateHistory.create({
+      data: {
+        source,
+        key,
+        cursor: info.cursor ?? null,
+        etag: info.etag ?? null,
+        lastRunAt: finishedAt,
+        lastSuccessAt: finishedAt,
+        statsJson: payload.statsJson ? String(payload.statsJson) : null,
+      },
+    })
+  } catch {
+    // ignore history failures
+  }
+
+  return updated
 }
 
 /**
@@ -114,10 +137,27 @@ export async function markError(
   when = new Date()
 ) {
   const msg = normalizeErrorMessage(error)
-  return ctx.prisma.syncState.update({
+  const updated = await ctx.prisma.syncState.update({
     where: { source_key: { source, key } },
     data: { lastErrorAt: when, lastError: msg },
   })
+
+  // 记录历史（失败也保留）
+  try {
+    await ctx.prisma.syncStateHistory.create({
+      data: {
+        source,
+        key,
+        lastRunAt: when,
+        lastErrorAt: when,
+        lastError: msg,
+      },
+    })
+  } catch {
+    // ignore history failures
+  }
+
+  return updated
 }
 
 /**

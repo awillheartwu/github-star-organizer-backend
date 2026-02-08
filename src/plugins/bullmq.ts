@@ -15,7 +15,7 @@ import type { Ctx } from '../helpers/context.helper'
 import * as notify from '../services/notify.service'
 import { cleanupRefreshTokensService, cleanupBullmqService } from '../services/maintenance.service'
 import * as aiService from '../services/ai.service'
-import { ensureState, markSuccess, touchRun } from '../services/sync.state.service'
+import { ensureState, markError, markSuccess, touchRun } from '../services/sync.state.service'
 
 export default fp(
   async (app) => {
@@ -200,32 +200,58 @@ export default fp(
             config: app.config,
             redis: app.redis,
           }
+          const source = 'maintenance'
+          const key = 'daily:default'
+          const startedAt = new Date()
+          await ensureState(ctx, source, key)
+          await touchRun(ctx, source, key, startedAt)
           app.log.info('[maintenance] daily cleanup start')
-          const r1 = await cleanupRefreshTokensService(ctx, { useLock: true })
-          const r2 = await cleanupBullmqService(ctx, { useLock: true })
-          app.log.info({ r1, r2 }, '[maintenance] daily cleanup done')
-          // fire-and-forget 邮件避免阻塞完成事件
-          ;(async () => {
-            try {
-              await notify.sendMaintenanceCompleted(
-                app,
-                job.id!,
-                r1,
-                {
-                  dryRun: app.config.bullCleanDryRun ?? true,
-                  queue: SYNC_STARS_QUEUE,
-                  cleanedCompleted: 0,
-                  cleanedFailed: 0,
-                  trimmedEventsTo: app.config.bullTrimEvents ?? 1000,
-                  removedRepeatables: 0,
-                },
-                app.config
-              )
-            } catch (e) {
-              app.log.warn({ e }, '[maintenance] notify mail failed')
-            }
-          })()
-          return { r1, r2 }
+          try {
+            const r1 = await cleanupRefreshTokensService(ctx, { useLock: true })
+            const r2 = await cleanupBullmqService(ctx, { useLock: true })
+            app.log.info({ r1, r2 }, '[maintenance] daily cleanup done')
+            // fire-and-forget 邮件避免阻塞完成事件
+            ;(async () => {
+              try {
+                await notify.sendMaintenanceCompleted(
+                  app,
+                  job.id!,
+                  r1,
+                  {
+                    dryRun: app.config.bullCleanDryRun ?? true,
+                    queue: SYNC_STARS_QUEUE,
+                    cleanedCompleted: 0,
+                    cleanedFailed: 0,
+                    trimmedEventsTo: app.config.bullTrimEvents ?? 1000,
+                    removedRepeatables: 0,
+                  },
+                  app.config
+                )
+              } catch (e) {
+                app.log.warn({ e }, '[maintenance] notify mail failed')
+              }
+            })()
+            const finishedAt = new Date()
+            await markSuccess(ctx, source, key, {
+              stats: {
+                scanned: 0,
+                created: 0,
+                updated: 0,
+                unchanged: 0,
+                softDeleted: 0,
+                pages: 1,
+                startedAt: startedAt.toISOString(),
+                finishedAt: finishedAt.toISOString(),
+                durationMs: finishedAt.getTime() - startedAt.getTime(),
+                maintenance: { r1, r2 },
+              } as unknown as SyncStats,
+              finishedAt,
+            })
+            return { r1, r2 }
+          } catch (e) {
+            await markError(ctx, source, key, e)
+            throw e
+          }
         },
         { connection, prefix: app.config.bullPrefix, concurrency: 1 }
       )

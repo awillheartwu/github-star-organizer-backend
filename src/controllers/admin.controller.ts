@@ -219,30 +219,48 @@ export async function listAiBatches(req: FastifyRequest, reply: FastifyReply) {
     sortOrder?: string
   }
   const sortOrder: Prisma.SortOrder = rawSortOrder === 'asc' ? 'asc' : 'desc'
-  const allowedFields = new Set(['updatedAt', 'lastRunAt', 'lastSuccessAt'])
-  const sortField = allowedFields.has(rawSortField ?? '') ? (rawSortField as string) : 'lastRunAt'
-  const orderBy: Prisma.SyncStateOrderByWithRelationInput[] =
-    sortField === 'updatedAt'
-      ? [{ updatedAt: sortOrder }]
-      : sortField === 'lastSuccessAt'
-        ? [{ lastSuccessAt: sortOrder }, { updatedAt: sortOrder }]
-        : [{ lastRunAt: sortOrder }, { lastSuccessAt: sortOrder }, { updatedAt: sortOrder }]
+  const allowedFields = new Set(['createdAt', 'lastRunAt', 'lastSuccessAt', 'lastErrorAt'])
+  const sortField = allowedFields.has(rawSortField ?? '') ? (rawSortField as string) : 'createdAt'
+  const orderBy: Prisma.SyncStateHistoryOrderByWithRelationInput[] = [
+    { [sortField]: sortOrder } as Prisma.SyncStateHistoryOrderByWithRelationInput,
+  ]
+  const where = {
+    OR: [
+      { source: 'github:stars' },
+      { source: 'maintenance' },
+      { source: 'ai:summary', key: { startsWith: 'batch:' } },
+    ],
+  }
   const [rows, total] = await Promise.all([
-    ctx.prisma.syncState.findMany({
-      where: { source: 'ai:summary', key: { startsWith: 'batch:' } },
+    ctx.prisma.syncStateHistory.findMany({
+      where,
       orderBy,
       skip: offset,
       take: limit,
-      select: { key: true, lastRunAt: true, lastSuccessAt: true, statsJson: true, updatedAt: true },
+      select: {
+        id: true,
+        source: true,
+        key: true,
+        lastRunAt: true,
+        lastSuccessAt: true,
+        lastErrorAt: true,
+        lastError: true,
+        statsJson: true,
+        createdAt: true,
+      },
     }),
-    ctx.prisma.syncState.count({ where: { source: 'ai:summary', key: { startsWith: 'batch:' } } }),
+    ctx.prisma.syncStateHistory.count({ where }),
   ])
   const data = rows.map((r) => ({
+    id: r.id,
+    source: r.source,
     key: r.key,
     lastRunAt: r.lastRunAt?.toISOString(),
     lastSuccessAt: r.lastSuccessAt?.toISOString(),
+    lastErrorAt: r.lastErrorAt?.toISOString(),
+    lastError: r.lastError ?? undefined,
     statsJson: r.statsJson ?? undefined,
-    updatedAt: r.updatedAt.toISOString(),
+    createdAt: r.createdAt.toISOString(),
   }))
   return reply.send({ message: 'ok', data, page, pageSize, total })
 }
@@ -250,20 +268,33 @@ export async function listAiBatches(req: FastifyRequest, reply: FastifyReply) {
 export async function getAiBatchById(req: FastifyRequest, reply: FastifyReply) {
   const ctx = getCtx(req)
   const { id } = req.params as { id: string }
-  const key = id.startsWith('batch:') ? id : `batch:${id}`
-  const r = await ctx.prisma.syncState.findFirst({
-    where: { source: 'ai:summary', key },
-    select: { key: true, lastRunAt: true, lastSuccessAt: true, statsJson: true, updatedAt: true },
+  const r = await ctx.prisma.syncStateHistory.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      source: true,
+      key: true,
+      lastRunAt: true,
+      lastSuccessAt: true,
+      lastErrorAt: true,
+      lastError: true,
+      statsJson: true,
+      createdAt: true,
+    },
   })
   if (!r) return reply.code(404).send({ message: 'not found' })
   return reply.send({
     message: 'ok',
     data: {
+      id: r.id,
+      source: r.source,
       key: r.key,
       lastRunAt: r.lastRunAt?.toISOString(),
       lastSuccessAt: r.lastSuccessAt?.toISOString(),
+      lastErrorAt: r.lastErrorAt?.toISOString(),
+      lastError: r.lastError ?? undefined,
       statsJson: r.statsJson ?? undefined,
-      updatedAt: r.updatedAt.toISOString(),
+      createdAt: r.createdAt.toISOString(),
     },
   })
 }

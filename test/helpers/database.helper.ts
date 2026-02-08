@@ -63,6 +63,7 @@ export class TestDatabase {
         "RefreshToken",
         "ArchivedProject",
         "SyncState",
+        "SyncStateHistory",
         "Project",
         "Tag",
         "User"

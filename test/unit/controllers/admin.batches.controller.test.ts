@@ -46,10 +46,10 @@ describe('admin controller — AI batches', () => {
     const prisma = TestDatabase.getInstance()
     // create 3 batches
     for (let i = 0; i < 3; i++) {
-      await prisma.syncState.create({
+      await prisma.syncStateHistory.create({
         data: {
-          source: 'ai:summary',
-          key: `batch:${i}`,
+          source: i === 0 ? 'github:stars' : i === 1 ? 'maintenance' : 'ai:summary',
+          key: i === 2 ? `batch:${i}` : 'daily:default',
           lastRunAt: new Date('2023-01-01T00:00:00Z'),
           lastSuccessAt: new Date('2023-01-01T00:00:10Z'),
           statsJson: '{"ok":1}',
@@ -66,7 +66,7 @@ describe('admin controller — AI batches', () => {
 
   it('gets batch detail by id', async () => {
     const prisma = TestDatabase.getInstance()
-    await prisma.syncState.create({
+    const row = await prisma.syncStateHistory.create({
       data: {
         source: 'ai:summary',
         key: 'batch:abc',
@@ -76,7 +76,7 @@ describe('admin controller — AI batches', () => {
       },
     })
     await app.ready()
-    const res = await app.inject({ method: 'GET', url: '/admin/ai/batches/abc' })
+    const res = await app.inject({ method: 'GET', url: `/admin/ai/batches/${row.id}` })
     expect(res.statusCode).toBe(200)
     const body = JSON.parse(res.payload)
     expect(body.data.key).toBe('batch:abc')
