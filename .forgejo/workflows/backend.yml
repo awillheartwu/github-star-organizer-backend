@@ -242,4 +242,3 @@ jobs:
             | sort -rk2 \
             | awk 'NR>3 {print $1}' \
             | xargs -r docker rmi
-  workflow_dispatch:
