@@ -229,6 +229,7 @@ export async function listAiBatches(req: FastifyRequest, reply: FastifyReply) {
       { source: 'github:stars' },
       { source: 'maintenance' },
       { source: 'ai:summary', key: { startsWith: 'batch:' } },
+      { source: 'ai:summary', key: 'all' },
     ],
   }
   const [rows, total] = await Promise.all([

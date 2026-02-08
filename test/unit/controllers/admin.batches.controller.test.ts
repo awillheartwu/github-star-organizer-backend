@@ -44,12 +44,12 @@ describe('admin controller — AI batches', () => {
 
   it('lists batches with pagination', async () => {
     const prisma = TestDatabase.getInstance()
-    // create 3 batches
-    for (let i = 0; i < 3; i++) {
+    // create 4 batches (includes ai:summary key=all)
+    for (let i = 0; i < 4; i++) {
       await prisma.syncStateHistory.create({
         data: {
           source: i === 0 ? 'github:stars' : i === 1 ? 'maintenance' : 'ai:summary',
-          key: i === 2 ? `batch:${i}` : 'daily:default',
+          key: i === 2 ? `batch:${i}` : i === 3 ? 'all' : 'daily:default',
           lastRunAt: new Date('2023-01-01T00:00:00Z'),
           lastSuccessAt: new Date('2023-01-01T00:00:10Z'),
           statsJson: '{"ok":1}',
@@ -61,7 +61,7 @@ describe('admin controller — AI batches', () => {
     expect(res.statusCode).toBe(200)
     const body = JSON.parse(res.payload)
     expect(body.data.length).toBe(2)
-    expect(body.total).toBe(3)
+    expect(body.total).toBe(4)
   })
 
   it('gets batch detail by id', async () => {
