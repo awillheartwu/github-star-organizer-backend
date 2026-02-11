@@ -709,5 +709,5 @@ export default fp(
     })
   },
   // 仅强制依赖 config；其余依赖通过实例属性注入（测试可直接装饰 stub）
-  { name: 'bullmq', dependencies: ['config'] }
+  { name: 'bullmq', dependencies: ['config', 'prisma', 'redis', 'mailer'] }
 )
