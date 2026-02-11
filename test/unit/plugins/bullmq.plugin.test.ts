@@ -82,10 +82,21 @@ describe('bullmq plugin (mocked)', () => {
     const prisma = TestDatabase.getInstance()
     app = Fastify({ logger: false })
     await app.register(configPlugin)
-    // decorate prisma/redis/mailer 以满足依赖
-    app.decorate('prisma', prisma)
-    app.decorate('redis', redisStub)
-    // 注册一个命名为 'mailer' 的轻量插件以满足依赖
+    // 注册命名插件以满足 bullmq 依赖校验
+    await app.register(
+      function prismaPlugin(instance, _opts, done) {
+        instance.decorate('prisma', prisma)
+        done()
+      },
+      { name: 'prisma' }
+    )
+    await app.register(
+      function redisPlugin(instance, _opts, done) {
+        instance.decorate('redis', redisStub)
+        done()
+      },
+      { name: 'redis' }
+    )
     await app.register(
       function mailerPlugin(instance, _opts, done) {
         instance.decorate('mailer', { send: async () => void 0 })
