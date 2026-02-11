@@ -1,8 +1,9 @@
 // test/unit/plugins/bullmq.plugin.test.ts
 import Fastify from 'fastify'
+import fp from 'fastify-plugin'
 import configPlugin from '../../../src/plugins/config'
 import bullmqPlugin from '../../../src/plugins/bullmq'
-import { TestDatabase } from '../../helpers/database.helper'
+import type { PrismaClient } from '@prisma/client'
 
 // Mock bullmq classes to avoid real Redis connection
 jest.mock('bullmq', () => {
@@ -70,39 +71,37 @@ describe('bullmq plugin (mocked)', () => {
 
   let app: ReturnType<typeof Fastify>
 
-  beforeAll(async () => {
-    await TestDatabase.setup()
-  })
-
-  afterAll(async () => {
-    await TestDatabase.cleanup()
-  })
-
   beforeEach(async () => {
-    const prisma = TestDatabase.getInstance()
+    const prisma = {} as PrismaClient
     app = Fastify({ logger: false })
     await app.register(configPlugin)
     // 注册命名插件以满足 bullmq 依赖校验
     await app.register(
-      function prismaPlugin(instance, _opts, done) {
-        instance.decorate('prisma', prisma)
-        done()
-      },
-      { name: 'prisma' }
+      fp(
+        function prismaPlugin(instance, _opts, done) {
+          instance.decorate('prisma', prisma)
+          done()
+        },
+        { name: 'prisma' }
+      )
     )
     await app.register(
-      function redisPlugin(instance, _opts, done) {
-        instance.decorate('redis', redisStub)
-        done()
-      },
-      { name: 'redis' }
+      fp(
+        function redisPlugin(instance, _opts, done) {
+          instance.decorate('redis', redisStub)
+          done()
+        },
+        { name: 'redis' }
+      )
     )
     await app.register(
-      function mailerPlugin(instance, _opts, done) {
-        instance.decorate('mailer', { send: async () => void 0 })
-        done()
-      },
-      { name: 'mailer' }
+      fp(
+        function mailerPlugin(instance, _opts, done) {
+          instance.decorate('mailer', { send: async () => void 0 })
+          done()
+        },
+        { name: 'mailer' }
+      )
     )
   })
 
