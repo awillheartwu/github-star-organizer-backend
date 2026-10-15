@@ -17,6 +17,7 @@ on:
       - '.forgejo/workflows/backend.yml'
       - 'Dockerfile'
       - 'docker-compose.yml'
+      - 'scripts/deploy-compose.sh'
   pull_request:
     branches: [main]
     paths:
@@ -29,6 +30,7 @@ on:
       - '.forgejo/workflows/backend.yml'
       - 'Dockerfile'
       - 'docker-compose.yml'
+      - 'scripts/deploy-compose.sh'
 
 jobs:
   build-and-test:
@@ -37,6 +39,7 @@ jobs:
       image: node:22-slim
       # 不需要 docker_host 字段了
     env:
+      GSOR_BACKEND_CONTEXT: .
       NODE_ENV: test
       HOST: 127.0.0.1
       DOCKER_API_VERSION: '1.43'
@@ -226,13 +229,9 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         run: pnpm -s dotenv -e .env.production --override -- tsx src/scripts/seedAdmin.ts
 
-      - name: Deploy (docker compose up)
+      - name: Deploy backend in shared Compose project
         if: github.event_name == 'push'
-        run: |
-          docker compose \
-            --project-directory "$PWD" \
-            -f docker-compose.yml \
-            up -d --no-build --remove-orphans
+        run: bash scripts/deploy-compose.sh api
 
       - name: Cleanup old images (keep latest 3 builds)
         if: github.event_name == 'push'

@@ -1,12 +1,26 @@
-version: '3.9'
+# Keep this file identical in the frontend and backend repositories.
+name: gsor
 
 services:
+  web:
+    image: gsor-frontend:latest
+    build:
+      context: ${GSOR_FRONTEND_CONTEXT:-../github-star-organizer}
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-https://gitapi.loica.top:5453}
+    ports:
+      - "33334:80"
+    restart: unless-stopped
+    networks:
+      - core-net
+
   api:
     image: gsor-backend:latest
     build:
-      context: .
+      context: ${GSOR_BACKEND_CONTEXT:-../github-star-organizer-backend}
     env_file:
-      - .env.production
+      - path: .env.production
+        required: ${GSOR_REQUIRE_API_ENV:-true}
     ports:
       - "33333:3000"
     restart: unless-stopped
