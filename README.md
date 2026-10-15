@@ -128,6 +128,8 @@ Compose 项目名统一为 `github_star_group`。CI 各自构建镜像，再执�
 
 本地同时构建两项服务时，保留两个仓库的相邻目录名；目录不同可通过 `GSOR_FRONTEND_CONTEXT`、`GSOR_BACKEND_CONTEXT` 指定源码位置。
 
+CI 与自动部署只在 Forgejo 执行：`main` push 或面向 `main` 的 PR 运行对应检查，只有 `main` push 部署。GitHub 仅同步代码，`.github/workflows/` 仅保留说明文件，不运行 GitHub Actions。
+
 CI 使用 `node:22-bookworm`，通过 `scripts/ci/install-docker.sh` 从 NAS 缓存的固定摘要 Docker 官方镜像提取 CLI/Compose/Buildx，替代每次 apt 安装。保留 lint、测试，完整应用构建只在 Dockerfile 内执行；后端保留镜像内生产环境校验，Prisma Client 由安装时的 `postinstall` 生成。前端 `.dockerignore` 排除依赖、环境文件和构建产物。
 
 这里复用的是宿主 daemon 的 CLI 镜像缓存：每个新 CI job 仍需提取工具，只有该固定摘要镜像不存在（HTTP 404）时才下载；权限或 daemon 错误会直接失败。CI 与 Dockerfile 的 Corepack 统一读取 `package.json` 中的 `packageManager: pnpm@9.14.2`，避免自动选择最新 pnpm。
