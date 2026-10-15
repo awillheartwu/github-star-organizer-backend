@@ -126,6 +126,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Check deployment scripts
+        run: node --test scripts/ci/deploy-compose.test.mjs
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v2
         with:

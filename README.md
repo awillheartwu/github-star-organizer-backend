@@ -120,7 +120,7 @@ pnpm seed:admin
 
 Compose 项目名统一为 `github_star_group`。CI 各自构建镜像，再执行 `bash scripts/deploy-compose.sh web` 或 `bash scripts/deploy-compose.sh api`，只更新对应服务。两条流水线分别将自己的旧容器迁入新项目，因此首次改名完成需要两边部署都成功。
 
-首次改名会停止对应旧容器，在新项目启动替代容器，确认 HTTP 响应后删除旧容器；期间有短暂停机。若启动或 HTTP 检查失败，会移除候选容器并尝试恢复旧容器。遇到多个旧容器、或新旧容器同时存在时会停止，需人工核对。不使用 `--remove-orphans`。
+首次改名会停止对应旧容器，在新项目启动替代容器，确认 HTTP 响应后删除旧容器；期间有短暂停机。若启动或 HTTP 检查失败，会移除候选容器并尝试恢复旧容器。旧容器通过 Compose 标签和 `Config.Image` 识别，避免 `latest` 更新后显示镜像 ID 导致漏识别。重试会清除上次失败留下的 `created` 候选容器；多个旧容器、或目标容器处于其他状态时会停止，需人工核对。不使用 `--remove-orphans`。
 
 日志继续使用原物理卷 `github_star_group-github-star-organizer-backend_gsor-logs`，不会随项目改名创建空卷替代原日志。部署脚本只在卷不存在时创建；自定义卷可设置 `GSOR_LOGS_VOLUME`。手动整套启动前也需要先创建该外部卷。
 

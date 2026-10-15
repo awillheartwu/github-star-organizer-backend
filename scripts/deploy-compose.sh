@@ -18,7 +18,17 @@ export GSOR_LOGS_VOLUME=${GSOR_LOGS_VOLUME:-github_star_group-github-star-organi
 echo "Deploying $service in Compose project $COMPOSE_PROJECT_NAME"
 docker compose -f docker-compose.yml config --quiet
 
-containers=$(docker ps -a --format '{{.ID}}|{{.Image}}|{{.Label "com.docker.compose.project"}}|{{.Label "com.docker.compose.service"}}')
+# ps may display an image ID after latest is retagged. Config.Image retains
+# the image reference used to create the container, independent of new builds.
+container_ids=$(docker ps -aq --filter label=com.docker.compose.project --filter "label=com.docker.compose.service=$service")
+containers=
+if [[ -n $container_ids ]]; then
+  inspection_ids=()
+  while IFS= read -r container_id; do
+    inspection_ids+=("$container_id")
+  done <<< "$container_ids"
+  containers=$(docker inspect --format '{{.Id}}|{{.Config.Image}}|{{index .Config.Labels "com.docker.compose.project"}}|{{index .Config.Labels "com.docker.compose.service"}}' "${inspection_ids[@]}")
+fi
 legacy=$(printf '%s\n' "$containers" | awk -F '|' -v project="$COMPOSE_PROJECT_NAME" -v service="$service" -v image="$image" 'index($2, image ":") == 1 || index($2, image "@") == 1 {if ($4 == service && $3 != project) print $1}')
 if [[ $(printf '%s\n' "$legacy" | sed '/^$/d' | wc -l) -gt 1 ]]; then
   echo "Multiple legacy $service containers found; migration requires manual selection." >&2
@@ -29,8 +39,13 @@ legacy_running=false
 if [[ -n $legacy ]]; then
   current=$(docker compose -f docker-compose.yml ps -a -q "$service")
   if [[ -n $current ]]; then
-    echo "Both legacy and target $service containers exist; inspect before migrating." >&2
-    exit 1
+    current_status=$(docker inspect --format '{{.State.Status}}' "$current")
+    if [[ $current_status != created ]]; then
+      echo "Both legacy and target $service containers exist ($current_status); inspect before migrating." >&2
+      exit 1
+    fi
+    echo "Removing unstarted $service candidate left by the failed migration: $current"
+    docker rm "$current"
   fi
   legacy_running=$(docker inspect --format '{{.State.Running}}' "$legacy")
 fi
