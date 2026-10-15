@@ -130,6 +130,8 @@ Compose 项目名统一为 `github_star_group`。CI 各自构建镜像，再执�
 
 CI 使用 `node:22-bookworm`，通过 `scripts/ci/install-docker.sh` 从 NAS 缓存的固定摘要 Docker 官方镜像提取 CLI/Compose/Buildx，替代每次 apt 安装。保留 lint、测试，完整应用构建只在 Dockerfile 内执行；后端保留镜像内生产环境校验，Prisma Client 由安装时的 `postinstall` 生成。前端 `.dockerignore` 排除依赖、环境文件和构建产物。
 
+这里复用的是宿主 daemon 的 CLI 镜像缓存：每个新 CI job 仍需提取工具，只有该固定摘要镜像不存在（HTTP 404）时才下载；权限或 daemon 错误会直接失败。CI 与 Dockerfile 的 Corepack 统一读取 `package.json` 中的 `packageManager: pnpm@9.14.2`，避免自动选择最新 pnpm。
+
 ---
 ## 认证与安全
 * Access / Refresh 双令牌；Refresh 通过 httpOnly Cookie 下发

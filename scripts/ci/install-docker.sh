@@ -9,13 +9,6 @@ api() {
     "http://localhost/v${DOCKER_API_VERSION:-1.43}$endpoint" "$@"
 }
 
-if api "/images/$image/json" >/dev/null 2>&1; then
-  echo "Using cached Docker CLI and Compose image"
-else
-  echo "Pulling Docker CLI and Compose image once"
-  api "/images/create?fromImage=$image" --request POST
-fi
-
 temporary=$(mktemp -d)
 container_id=''
 cleanup() {
@@ -25,6 +18,18 @@ cleanup() {
   rm -rf "$temporary"
 }
 trap cleanup EXIT HUP INT TERM
+
+status=$(curl --silent --show-error --unix-socket /var/run/docker.sock \
+  --output "$temporary/image.json" --write-out '%{http_code}' \
+  "http://localhost/v${DOCKER_API_VERSION:-1.43}/images/$image/json")
+case "$status" in
+  200) echo "Using host-cached Docker CLI/Compose/Buildx image: $image" ;;
+  404)
+    echo "CLI image is absent from this host; downloading once: $image"
+    api "/images/create?fromImage=$image" --request POST
+    ;;
+  *) echo "Cannot inspect cached CLI image (Docker API HTTP $status); refusing to pull." >&2; exit 1 ;;
+esac
 
 # The fresh Node job has no Docker CLI yet, so use the daemon API to copy it.
 api /containers/create --header 'Content-Type: application/json' \

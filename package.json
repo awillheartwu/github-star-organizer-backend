@@ -2,6 +2,7 @@
   "name": "github-star-organizer-backend",
   "version": "1.2.0",
   "type": "module",
+  "packageManager": "pnpm@9.14.2",
   "description": "This project was bootstrapped with Fastify-CLI.",
   "main": "main.ts",
   "scripts": {
