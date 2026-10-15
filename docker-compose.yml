@@ -1,5 +1,5 @@
 # Keep this file identical in the frontend and backend repositories.
-name: gsor
+name: github_star_group
 
 services:
   web:
@@ -40,3 +40,5 @@ networks:
 
 volumes:
   gsor-logs:
+    name: ${GSOR_LOGS_VOLUME:-github_star_group-github-star-organizer-backend_gsor-logs}
+    external: true

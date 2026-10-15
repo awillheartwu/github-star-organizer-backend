@@ -118,13 +118,17 @@ pnpm seed:admin
 
 前后端仓库保留相同的 `docker-compose.yml` 和 `scripts/deploy-compose.sh`，后续修改需同步两份。使用 Docker Compose 2.24 或更新版本；同一 NAS Docker daemon 上仍运行独立的 `web`、`api` 服务，端口和 `core-net` 外部网络保持不变。
 
-CI 各自构建镜像，再执行 `bash scripts/deploy-compose.sh web` 或 `bash scripts/deploy-compose.sh api`，只更新对应服务。部署脚本优先沿用现有后端容器/日志卷的 Compose 项目名，保留原有日志卷；全新安装默认项目名为 `gsor`。多个后端项目同时存在时会停止，需明确设置 `COMPOSE_PROJECT_NAME` 后再部署。
+Compose 项目名统一为 `github_star_group`。CI 各自构建镜像，再执行 `bash scripts/deploy-compose.sh web` 或 `bash scripts/deploy-compose.sh api`，只更新对应服务。两条流水线分别将自己的旧容器迁入新项目，因此首次改名完成需要两边部署都成功。
 
-首次部署前端会停止旧项目的 `web`，在后端项目中启动新 `web`，确认 HTTP 响应后删除旧容器；期间有短暂停机。若启动或 HTTP 检查失败，会移除候选容器并尝试恢复旧前端。部署后两项服务归属同一个 Compose 项目，不使用 `--remove-orphans`。
+首次改名会停止对应旧容器，在新项目启动替代容器，确认 HTTP 响应后删除旧容器；期间有短暂停机。若启动或 HTTP 检查失败，会移除候选容器并尝试恢复旧容器。遇到多个旧容器、或新旧容器同时存在时会停止，需人工核对。不使用 `--remove-orphans`。
+
+日志继续使用原物理卷 `github_star_group-github-star-organizer-backend_gsor-logs`，不会随项目改名创建空卷替代原日志。部署脚本只在卷不存在时创建；自定义卷可设置 `GSOR_LOGS_VOLUME`。手动整套启动前也需要先创建该外部卷。
 
 生产环境文件仍只由后端 CI 写入。只有前端部署脚本会允许缺少 `.env.production`，且只更新 `web`；默认 Compose 命令仍要求该文件存在，API 部署脚本还要求它非空。
 
 本地同时构建两项服务时，保留两个仓库的相邻目录名；目录不同可通过 `GSOR_FRONTEND_CONTEXT`、`GSOR_BACKEND_CONTEXT` 指定源码位置。
+
+CI 使用 `node:22-bookworm`，通过 `scripts/ci/install-docker.sh` 从 NAS 缓存的固定摘要 Docker 官方镜像提取 CLI/Compose/Buildx，替代每次 apt 安装。保留 lint、测试，完整应用构建只在 Dockerfile 内执行；后端保留镜像内生产环境校验，Prisma Client 由安装时的 `postinstall` 生成。前端 `.dockerignore` 排除依赖、环境文件和构建产物。
 
 ---
 ## 认证与安全
